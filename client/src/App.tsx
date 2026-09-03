@@ -4,7 +4,7 @@ import { type ChatMessage, type PeerProfile } from './types';
 import { MessageList } from './components/MessageList';
 import { MessageInput } from './components/MessageInput';
 import { KeyExchangeModal } from './components/KeyExchangeModal';
-import './App.css'
+import './App.css';
 
 export default function App() {
   //My Identity Keys

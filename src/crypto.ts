@@ -12,7 +12,7 @@ export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
             namedCurve: 'P-256' // NIST  elliptic curve
         }, //algorithm
         true, // extractable
-        ['deriveKey', 'deriveBits'] //keyUsages
+        ['deriveBits'] //keyUsages
     );
 }
 
@@ -37,15 +37,22 @@ export async function encryptMessage(
     const ephemeralPair = await window.crypto.subtle.generateKey(
         {name: 'ECDH', namedCurve: 'P-256' }, //algorithm
         true, //extractable,
-        ['deriveKey'] //keyUsages
+        ['deriveBits'] //keyUsages
     );
 
-    const sharedKey = await window.crypto.subtle.deriveKey(
-        {name: 'ECDH', public: recipientKey},
-        ephemeralPair.privateKey, // baseKey
-        {name: 'AES_GCM', length: 256}, //derivedKeyType
-        false,
-        ['encrypt']
+    // Derive from raw bits for wide support (Deriving from ECDH did not work in Safari)
+    const sharedBits = await window.crypto.subtle.deriveBits(
+        { name: 'ECDH', public: recipientKey }, //algorithm
+        ephemeralPair.privateKey, //baseKey
+        256 //length
+    );
+
+    const sharedKey = await window.crypto.subtle.importKey(
+        'raw', //format
+        sharedBits, //keyData
+        {name: 'AES-GCM'}, //algorithm
+        false, //extractable
+        ['encrypt'] //keyUsages
     );
 
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // Random 12-byte initialization vector
@@ -81,19 +88,25 @@ export async function decryptMessage(
     const ephemeralKey = await  window.crypto.subtle.importKey(
         'jwk', // format
         packet.ephemeralPublicKey, //keyData
-        {name: 'AES_GCM', length: 256}, //alorithms
+        {name: 'ECDH', namedCurve:'P-256'}, //algorithms
         false, //extractable
         [] //readonlyArray
-    )
+    );
 
-    // Derives identical shared secret AES key
-    const sharedKey = await window.crypto.subtle.deriveKey(
+    // Derives identical shared secret AES key. Modified from deriveKey to importing key from raw bits for wider browser support
+    const sharedBits = await window.crypto.subtle.deriveBits(
         {name: 'ECDH', public: ephemeralKey}, //algorithm
         recipientPrivateKey, //baseKey
-        {name: 'AES-GCM', length: 256}, //derivedKeyType
+        256 //length
+    );
+
+    const sharedKey = await window.crypto.subtle.importKey(
+        'raw', //format
+        sharedBits, //keyData
+        {name: 'AES-GCM'}, //algorithm
         false, //extractable
-        ['decrypt']
-    )
+        ['decrypt'] //keyUsages
+    );
 
     // Decrypts ciphertext buffer
     const decryptBuffer = await window.crypto.subtle.decrypt(

@@ -3,6 +3,7 @@ import { generateIdentityKeyPair, exportPublicKey, encryptMessage, decryptMessag
 import { type ChatMessage, type PeerProfile } from './types';
 import { MessageList } from './components/MessageList';
 import { MessageInput } from './components/MessageInput';
+import { KeyExchangeModal } from './components/KeyExchangeModal';
 import './App.css'
 
 export default function App() {
@@ -57,10 +58,17 @@ export default function App() {
       </header>
 
       <main className="app-body">
+        {!peer ? (
+          <KeyExchangeModal
+            myPublicJwk={myPublicJwk}
+            onConnectPeer={(connectedPeer) => setPeer(connectedPeer)}
+          />
+        ) : (
         <div className="chat-container">
           <MessageList messages={messages} />
           <MessageInput onSendMessage={handleSendMessage} />
         </div>
+        )}
       </main>
     </div>
   );

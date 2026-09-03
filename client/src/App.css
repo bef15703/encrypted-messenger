@@ -23,21 +23,26 @@
 }
 
 .app-layout {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;                
-  background: var(--bg-surface);*/
-  overflow: hidden;           
+  background: var(--bg-surface);
 }
 
 .app-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+
+  background: linear-gradient(to bottom, #ffffff 50%, #ffffff00 100%);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 1em 1.5em;
-  background: linear-gradient(to bottom, #ffffff 50%, #ffffff00 100%);;
-  z-index: 2;
 }
 
 .app-header h2 {
@@ -57,11 +62,11 @@
 }
 
 .app-body {
-  flex: 1;                     
+  z-index: 1;
+  flex-grow: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  z-index: 1;
 }
 
 .chat-container {
@@ -71,12 +76,17 @@
 }
 
 .message-list {
-  flex: 1;
-  padding: 20px;
-  overflow-y: auto;       
+  padding: 1em;
+  padding-top: 3.25em;
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;           
+  gap: 12px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #00000055 #00000022; /* thumb - track */
 }
 
 .empty-chat {
@@ -86,10 +96,73 @@
   text-align: center;
 }
 
+/* ==========================================================================
+   3. KEY EXCHANGE MODAL / ONBOARDING SCREEN
+   Displayed before two peers are connected.
+   ========================================================================== */
+.key-exchange-card {
+  padding: 32px;
+  max-width: 540px;
+  margin: auto;                /* Centers the form inside the chat body */
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.key-exchange-card h3 {
+  margin: 12px 0 4px;
+  font-size: 1rem;
+  color: var(--text-main);
+}
+
+/* Inputs and textareas inside the key exchange form */
+.key-exchange-card input,
+.key-exchange-card textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.key-exchange-card textarea {
+  font-family: monospace;      /* Monospace makes JSON payloads easier to inspect */
+  font-size: 0.8rem;
+  resize: vertical;
+}
+
+/* Key exchange action buttons */
+.key-exchange-card button {
+  padding: 10px 16px;
+  background: var(--primary);
+  color: var(--primary-text);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease-in-out;
+}
+
+.key-exchange-card button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.key-exchange-card button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
 .message-bubble {
   max-width: 70%; /* Prevents wide bubbles on desktop monitors */
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
+  padding: .75em;
+  border-radius: 1em;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -119,10 +192,15 @@
 
 /* Tiny timestamp at bottom of bubble */
 .message-time {
+  display: none;
   font-size: 0.7rem;
   margin-top: 4px;
   align-self: flex-end;
   opacity: 0.75;
+}
+
+.message-bubble:hover .message-time {
+  display: block;
 }
 
 .chat-input-form {  
@@ -177,4 +255,17 @@
 .chat-input-form button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.no-scrollbar {
+  /* IE and Edge */
+  -ms-overflow-style: none;  
+  
+  /* Firefox */
+  scrollbar-width: none;  
+}
+
+/* Chrome, Safari, and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

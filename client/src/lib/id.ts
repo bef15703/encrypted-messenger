@@ -1,4 +1,4 @@
-const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ' //Excluding 1,I,L,O,0 to help readability and prevent confusion
+const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ' //Excluding 1,I,O,0 to help readability and prevent confusion
 
 export function generateUserId(): string {
     const length = 12;
@@ -9,7 +9,7 @@ export function generateUserId(): string {
     let result = '';
     for (let i = 0; i < length; i++) {
         const charIndex = randomBytes[i] & 31;
-        result = ALPHABET[charIndex];
+        result += ALPHABET[charIndex];
     }
 
     return `${result.slice(0, 4)}-${result.slice(4, 8)}-${result.slice(8, 12)}`;

@@ -9,8 +9,10 @@ export interface ChatMessage {
 }
 
 export interface PeerProfile {
-    name: string;
-    publicKey: JsonWebKey
+  userId: string;
+  name: string;
+  publicKey: JsonWebKey;
+  online?: boolean;
 }
 
 export interface ServerToClientEvents {

@@ -31,7 +31,7 @@ export interface ClientToServerEvents {
     lookup_user: (
         targetUserId: string,
         callback: (response: {
-            sucess: boolean;
+            success: boolean;
             publicKey?: JsonWebKey;
             displayName?: string;
             error?: string;
@@ -40,7 +40,7 @@ export interface ClientToServerEvents {
 
     send_packet: (
         data: {recipientId: string; packet: EncryptedPacket},
-        callback: (response: {sucess: boolean; error?: string}) => void
+        callback: (response: {success: boolean; error?: string}) => void
     ) => void;
 }
 

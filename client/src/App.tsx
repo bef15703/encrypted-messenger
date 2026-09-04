@@ -113,6 +113,7 @@ export default function App() {
       senderId: string;
       senderDisplayName: string;
       packet: EncryptedPacket;
+      timestamp?: number;
     }) => {
       try {
         // Decrypts using local private key
@@ -122,7 +123,7 @@ export default function App() {
         );
 
         const newMessageId = crypto.randomUUID();
-        const timestamp = Date.now();
+        const messageTimestamp = data.timestamp ?? Date.now();
 
         // Saves decrypted record to IndexedDB
         const db = await getDb();
@@ -131,7 +132,7 @@ export default function App() {
           conversationId: data.senderId,
           senderId: data.senderId,
           text: plaintext,
-          timestamp,
+          timestamp: messageTimestamp,
           outgoing: false,
         };
         await db.put("messages", localRecord);
@@ -140,16 +141,17 @@ export default function App() {
         if (peerRef.current && peerRef.current.userId === data.senderId) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMessageId)) return prev;
-            return [
+            const updated = [
               ...prev,
               {
                 id: newMessageId,
-                sender: "peer",
+                sender: "peer" as const,
                 text: plaintext,
-                timestamp,
+                timestamp: messageTimestamp,
                 rawPacket: data.packet,
               },
             ];
+            return updated.sort((a, b) => a.timestamp - b.timestamp);
           });
         }
       } catch (err) {

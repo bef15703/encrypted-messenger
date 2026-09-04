@@ -48,8 +48,24 @@ export interface ServerToClientEvents {
     receive_packet: (data: {
         senderId: string;
         senderDisplayName: string;
-        packet: EncryptedPacket
+        packet: EncryptedPacket;
+        timestamp: number;
     }) => void;
 
     user_status_changed: (data: {userId: string; online: boolean}) => void;
+}
+
+export interface StoredUser {
+    userId: string;
+    displayName: string;
+    publicKey: JsonWebKey;
+    lastSeen: number;
+}
+
+export interface QueuedPacket {
+    id: string;
+    senderId: string;
+    senderDisplayName: string;
+    packet: any;
+    timestamp: number
 }

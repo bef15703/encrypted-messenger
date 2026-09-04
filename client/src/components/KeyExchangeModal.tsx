@@ -16,7 +16,7 @@ export function KeyExchangeModal({myUserId, onConnectPeer}: KeyExchangeProps) {
 
     const handleCopyMyKey = () => {
         if (!myUserId) return;
-        navigator.clipboard.writeText(JSON.stringify(myUserId));
+        navigator.clipboard.writeText(myUserId);
         alert('Your ID copied to clipboard');
     };
 

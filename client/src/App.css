@@ -3,7 +3,7 @@
   --border-color: #d2d2d2;     
   
   --primary: #0176FF;          
-  --primary-hover: #0063d3;
+  --primary-hover: #489dfd;
   --primary-text: #ffffff;
   
   --text-main: #111827;        
@@ -238,7 +238,7 @@
 
 .message-list {
   padding: 1em;
-  padding-top: 3.25em;
+  padding-top: 3.5em;
   flex-grow: 1;
   min-height: 0;
   overflow-y: auto;
@@ -389,12 +389,12 @@
 .key-exchange-card button {
   font-size: 0.9rem;
   font-family: inherit;
+  font-weight: 600;
   padding: .75em 1em;
   background: var(--primary);
   color: var(--primary-text);
   border: none;
   border-radius: .75em;
-  font-weight: 500;
   cursor: pointer;
   transition: background 0.15s ease-in-out;
 }

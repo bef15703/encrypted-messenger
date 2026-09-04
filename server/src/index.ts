@@ -7,7 +7,8 @@ import {
     ClientToServerEvents,
     ServerToClientEvents,
     UserSession,
-} from './types.js'
+} from './types.js';
+import { type StoredUser, type QueuedPacket } from './types.js';
 import { timeStamp } from 'console';
 
 dotenv.config()
@@ -30,6 +31,8 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
 
 const sessionsByUserId = new Map<string, UserSession>();
 const userIdsBySocketId = new Map<string, string>();
+const userDirectory = new Map<string, StoredUser>();
+const mailboxQueue = new Map<string, QueuedPacket[]>();
 
 io.on('connection', (socket) => {
     console.log(`[Connect] Socket ID: ${socket.id}`);
@@ -63,28 +66,51 @@ io.on('connection', (socket) => {
         sessionsByUserId.set(cleanId, session);
         userIdsBySocketId.set(socket.id, cleanId);
 
+        userDirectory.set(cleanId, {
+            userId: cleanId,
+            displayName: cleanName,
+            publicKey,
+            lastSeen: Date.now()
+        });
+
         console.log(`[Registered] "${cleanName}" (${cleanId}) mapped to socket ${socket.id}`);
 
         callback({success: true});
 
         socket.broadcast.emit('user_status_changed', {userId: cleanId, online: true});
+
+        const pendingPackets = mailboxQueue.get(cleanId);
+        if (pendingPackets && pendingPackets.length > 0) {
+            console.log(`[Mailbox] Delivering ${pendingPackets.length} queued packets to ${cleanId}`);
+
+            for (const queued of pendingPackets) {
+                socket.emit('receive_packet', {
+                    senderId: queued.senderId,
+                    senderDisplayName: queued.senderDisplayName,
+                    packet: queued.packet,
+                    timestamp: queued.timestamp
+                });
+            }
+
+            mailboxQueue.delete(cleanId); // upholds zero-knowledge forward secrecy
+        }
     });
 
     socket.on('lookup_user', (targetUserId, callback) => {
         const cleanId = targetUserId.trim().toUpperCase();
-        const targetSession = sessionsByUserId.get(cleanId);
+        const storedProfile = userDirectory.get(cleanId);
 
-        if (!targetSession) {
+        if (!storedProfile) {
             return callback({
                 success: false,
-                error: `User ID "${targetUserId}" not found or currently offline.`
-            });
+                error: `User ID "${targetUserId}" has not registered on this relay.`
+            })
         }
 
         callback({
             success: true,
-            publicKey: targetSession.publicKey,
-            displayName: targetSession.displayName
+            publicKey: storedProfile.publicKey,
+            displayName: storedProfile.displayName
         });
     });
 
@@ -98,25 +124,49 @@ io.on('connection', (socket) => {
         }
 
         const senderSession = sessionsByUserId.get(senderId);
-        const targetSession = sessionsByUserId.get(recipientId.trim().toUpperCase());
+        const cleanRecipientId = recipientId.trim().toUpperCase();
+        const targetSession = sessionsByUserId.get(cleanRecipientId);
+        const knownRecipient = userDirectory.get(cleanRecipientId);
 
-        if (!targetSession || !senderSession) {
+        if (!knownRecipient) {
             return callback({
                 success: false,
-                error: `Recipient "${recipientId}" is offline or does not exist.`
+                error: `Recipient "${recipientId}" does not exist on this relay.`
             });
         }
 
-        io.to(targetSession.socketId).emit('receive_packet', {
-            senderId: senderSession.userId,
-            senderDisplayName: senderSession.displayName,
-            packet
-        });
+        const senderDisplayName = senderSession?.displayName || 'Unknown';
 
-        console.log(
-            `[Relayed] ${senderSession.displayName} (${senderSession.userId}) -> ` +
-            `${targetSession.displayName} (${targetSession.userId}) [${packet.ciphertext.length} bytes]`
-        );
+        if (targetSession) {
+            io.to(targetSession.socketId).emit('receive_packet', {
+                senderId,
+                senderDisplayName,
+                packet,
+                timestamp: Date.now()
+            });
+
+            console.log(
+                `[Relayed Direct] ${senderDisplayName} (${senderId}) -> ` +
+                `${targetSession.displayName} (${cleanRecipientId}) [${packet.ciphertext.length} bytes]`
+            );
+        } else {
+            const queuedPacket: QueuedPacket = {
+                id: crypto.randomUUID(),
+                senderId,
+                senderDisplayName,
+                packet,
+                timestamp: Date.now()
+            };
+
+            const existingQueue = mailboxQueue.get(cleanRecipientId) || [];
+            existingQueue.push(queuedPacket);
+            mailboxQueue.set(cleanRecipientId, existingQueue);
+
+            console.log(
+                `[Queued Offline] ${senderDisplayName} (${senderId}) -> ` +
+                `${knownRecipient.displayName} (${cleanRecipientId}) (Queue depth: ${existingQueue.length})`
+            );
+        }
 
         callback({success: true});
     });

@@ -4,6 +4,11 @@ export interface EncryptedPacket {
     ephemeralPublicKey: JsonWebKey;
 }
 
+export interface ExportedKeyPair {
+    publicKey: JsonWebKey;
+    privateKey: JsonWebKey;
+}
+
 // Generates a long-term ECDH key pair
 export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
     return await window.crypto.subtle.generateKey(
@@ -16,9 +21,22 @@ export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
     );
 }
 
-// Exports public key into portable JSON Web Key
-export async function exportPublicKey(key: CryptoKey): Promise<JsonWebKey> {
-    return await window.crypto.subtle.exportKey('jwk', key);
+export async function exportKeyPair(keyPair: CryptoKeyPair): Promise<ExportedKeyPair> {
+    const [publicKey, privateKey] = await Promise.all([
+        window.crypto.subtle.exportKey('jwk', keyPair.publicKey),
+        window.crypto.subtle.exportKey('jwk', keyPair.privateKey)
+    ]);
+    return {publicKey, privateKey};
+}
+
+export async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
+    return await window.crypto.subtle.importKey(
+        'jwk',
+        jwk,
+        {name: 'ECDH', namedCurve: 'P-256'},
+        false,
+        ['deriveBits']
+    );
 }
 
 // Encrypts a message

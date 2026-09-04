@@ -11,6 +11,7 @@ export const socket: TypedSocket = io(SERVER_URL, {
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
+  transports: ['websocket', 'polling'],
 });
 
 export function connectWithIdentity(identity: ActiveIdentity): Promise<boolean> {

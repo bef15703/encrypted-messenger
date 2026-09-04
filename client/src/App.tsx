@@ -16,7 +16,7 @@ import "./App.css";
 export default function App() {
   // Active user's identity and socket connection state
   const [identity, setIdentity] = useState<ActiveIdentity | null>(null);
-  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [, setIsConnected] = useState<boolean>(false);
 
   // Active peer session and multi-chat contact state
   const [peer, setPeer] = useState<PeerProfile | null>(null);

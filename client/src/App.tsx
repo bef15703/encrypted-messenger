@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { generateIdentityKeyPair, exportPublicKey, encryptMessage, decryptMessage } from './lib/crypto';
-import { type ChatMessage, type PeerProfile } from './types';
+import { type ChatMessage, type PeerProfile } from './lib/types';
 import { MessageList } from './components/MessageList';
 import { MessageInput } from './components/MessageInput';
 import { KeyExchangeModal } from './components/KeyExchangeModal';

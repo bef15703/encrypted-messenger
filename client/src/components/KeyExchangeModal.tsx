@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type PeerProfile } from '../types'
+import { type PeerProfile } from '../lib/types'
 
 interface KeyExchangeProps {
     myPublicJwk: JsonWebKey | null;

@@ -1,4 +1,4 @@
-const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ' //Excluding 1,I,O,0 to help readability and prevent confusion
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ' // Crockford Base32 to avoid confusion and help readability (excludes: I,L,O,U)
 
 export function generateUserId(): string {
     const length = 12;
@@ -17,6 +17,6 @@ export function generateUserId(): string {
 
 export function isValidUserId(id: string): boolean {
     const clean = id.trim().toUpperCase();
-    const pattern = /^[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{4}$/;
+    const pattern = /^(?:[0-9A-HJ-KM-NP-TV-Z]{4}-){2}[0-9A-HJ-KM-NP-TV-Z]{4}$/;
     return pattern.test(clean);
 }

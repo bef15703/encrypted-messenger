@@ -8,9 +8,8 @@ import {
     ServerToClientEvents,
     UserSession,
 } from './types.js';
-import { StoredUser, QueuedPacket } from './types.js';
+import { QueuedPacket } from './types.js';
 import { initDb, upsertUser, getUser, enqueuePacket, drainMailbox, pool } from './db.js';
-import { timeStamp } from 'console';
 
 dotenv.config()
 
@@ -23,9 +22,15 @@ app.get('/health', (_req, res) => {
 
 const server = http.createServer(app);
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    ...(process.env.CLIENT_ORIGIN ? [process.env.CLIENT_ORIGIN] : [])
+];
+
 const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
     cors: {
-        origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        origin: allowedOrigins,
         methods: ['GET', 'POST'],
     },
 });

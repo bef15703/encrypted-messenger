@@ -1,4 +1,4 @@
-# Encrypted-Messenger
+# Encrypted Messenger
 
 Full stack, real-time secure messaging application with end-to-end encryption (E2EE), client side key generation, and an untrusted WebSocket relay.
 
@@ -66,7 +66,7 @@ VITE_SERVER_URL=http://localhost:4000`
 
 4. Launch Services:
 ```
-npm run dev
+$ npm run dev
 ```
 
 

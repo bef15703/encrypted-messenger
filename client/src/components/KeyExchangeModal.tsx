@@ -66,6 +66,7 @@ export function KeyExchangeModal({myUserId, onConnectPeer}: KeyExchangeProps) {
     return (
         <div className="key-exchange-card">
             <h3>Your Identity</h3>
+            {myUserId && (<h3>{myUserId}</h3>)}
             <button type="button" onClick={handleCopyMyKey} disabled={!myUserId}>
                 Copy My User ID (Share this)
             </button>

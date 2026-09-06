@@ -11,7 +11,11 @@ import { socket, connectWithIdentity } from "./lib/socket";
 import { MessageList } from "./components/MessageList";
 import { MessageInput } from "./components/MessageInput";
 import { KeyExchangeModal } from "./components/KeyExchangeModal";
+import { formatDate } from "./lib/utils";
 import "./App.css";
+
+import personIcon from "./assets/person.fill.svg";
+import xmark from "./assets/xmark.svg";
 
 export default function App() {
   // Active user's identity and socket connection state
@@ -22,6 +26,7 @@ export default function App() {
   const [peer, setPeer] = useState<PeerProfile | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, number>>({});
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -57,9 +62,21 @@ export default function App() {
 
         // Loads saved contacts from IndexedDB
         const db = await getDb();
-        const savedContacts = await db.getAll("contacts");
+        const [savedContacts, allMessages] = await Promise.all([
+          db.getAll("contacts"),
+          db.getAll("messages"),
+        ]);
+
         if (isMounted) {
           setContacts(savedContacts);
+
+          const times: Record<string, number> = {};
+          for (const msg of allMessages) {
+            if (!times[msg.conversationId] || msg.timestamp > times[msg.conversationId]) {
+              times[msg.conversationId] = msg.timestamp;
+            }
+          }
+          setLastMessageTimes(times);
         }
       } catch (err) {
         console.error("[App] Initialization failed:", err);
@@ -137,6 +154,11 @@ export default function App() {
         };
         await db.put("messages", localRecord);
 
+        setLastMessageTimes((prev) => ({
+          ...prev,
+          [data.senderId]: messageTimestamp,
+        }));
+
         // If the sender is active open chat, display it immediately
         if (peerRef.current && peerRef.current.userId === data.senderId) {
           setMessages((prev) => {
@@ -198,6 +220,11 @@ export default function App() {
       };
       await db.put("messages", localRecord);
 
+      setLastMessageTimes((prev) => ({
+        ...prev,
+        [peer.userId]: timestamp,
+      }));
+
       const newMessage: ChatMessage = {
         id: messageId,
         sender: "me",
@@ -238,6 +265,7 @@ export default function App() {
           {!isSidebarCollapsed && <h3>Chats</h3>}
           <div className="sidebar-header-actions">
             {!isSidebarCollapsed && (
+              <div className="horizontal">
               <button
                 type="button"
                 className="new-chat-btn"
@@ -245,15 +273,16 @@ export default function App() {
               >
                 New Chat
               </button>
-            )}
-            <button
+              <button
               type="button"
               className="toggle-sidebar-btn"
               onClick={() => setIsSidebarCollapsed((prev) => !prev)}
               title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {isSidebarCollapsed ? '»' : '«'}
+              <img src={xmark} alt="close contacts" className="icon"/>
             </button>
+            </div>
+            )}
           </div>
         </div>
 
@@ -269,8 +298,11 @@ export default function App() {
                   className={`contact-item ${peer?.userId === contact.userId ? 'active' : ''}`}
                   onClick={() => handleSelectContact(contact)}
                 >
-                  <div className="contact-name">{contact.displayName}</div>
-                  <div className="contact-id">{contact.userId}</div>
+                  <div className="vertical">
+                    <div className="contact-name">{contact.displayName}</div>
+                    <div className="contact-id">{contact.userId}</div>
+                  </div>
+                  <span className="last-chat-time">{lastMessageTimes[contact.userId] ? formatDate(lastMessageTimes[contact.userId]) : ""}</span>
                 </button>
               ))
             )}
@@ -278,20 +310,24 @@ export default function App() {
         )}
       </aside>
 
-      <div className="main-column">
+      <div className={`main-column ${isSidebarCollapsed ? '' : 'collapsed'}`}>
         <header className="app-header">
-          <div>
-            <h2>Encrypted Messenger</h2>
-            {/*identity && (
-              <small style={{ color: '#888' }}>
-                Your ID: <strong>{identity.userId}</strong> ({isConnected ? '🟢 Online' : '🔴 Offline'})
-              </small>
-            )*/}
+          <div className="horizontal">
+            {isSidebarCollapsed && (
+          <button
+              type="button"
+              className="toggle-sidebar-btn"
+              onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+              title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <img src={personIcon} alt="open contacts" className="icon"/>
+            </button> )}
+            <h2>{peer ? peer.name : "Encrypted Messenger"}</h2>
           </div>
           {peer && (
             <div className="active-peer-info">
-              <span className="peer-badge">
-                Chatting with: <strong>{peer.name}</strong> {/*({peer.userId})*/}
+              <span className={"peer-badge " + (peer.online ? "online" : "offline")}>
+                {peer.online ? "Online" : "Offline"}
               </span>
             </div>
           )}
@@ -305,7 +341,7 @@ export default function App() {
               </div>
             ) : (
               <div className="empty-chat-pane">
-                <p>Select a conversation from the sidebar or click <strong>+ New Chat</strong> to connect with a peer.</p>
+                <p>Select a conversation from the sidebar or click <strong>New Chat</strong> to connect with a peer.</p>
               </div>
             )}
           </section>
@@ -319,7 +355,7 @@ export default function App() {
               className="modal-close-icon"
               onClick={() => setIsModalOpen(false)}
             >
-              &times;
+              <img src={xmark} alt="close contacts" className="icon"/>
             </button>
             <KeyExchangeModal
               myUserId={identity?.userId || null}

@@ -2,15 +2,15 @@ export function formatChatDividerDate(timestamp: number): string {
   const date = new Date(timestamp);
   const now = new Date();
 
-  const isToday = date.toDateString() === now.toDateString();
+  if (date.toDateString() === now.toDateString()) {
+    return formatTime(timestamp);
+  }
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  if (isToday) return 'Today';
-  if (isYesterday) return 'Yesterday';
-
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
   const isSameYear = date.getFullYear() === now.getFullYear();
   return date.toLocaleDateString(undefined, {
     month: 'short',
@@ -23,21 +23,21 @@ export function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
   const now = new Date();
 
-  const isToday = date.toDateString() === now.toDateString();
+  if (date.toDateString() === now.toDateString()) {
+    return formatTime(timestamp);
+  }
 
-  if (isToday) return formatTime(timestamp);
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  if (isYesterday) return 'Yesterday';
+  if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  }
   
-  const weekAgo = new Date(now);
-  weekAgo.setDate(now.getDate() - 7);
-  const isWeekAgo = date.toDateString() > weekAgo.toDateString();
-
-  if (isWeekAgo) return date.toLocaleDateString('userLocale', { weekday: 'long' });
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  if (now.getTime() - timestamp < sevenDaysMs) {
+    return date.toLocaleDateString(undefined, { weekday: "long" });
+  }
 
   const isSameYear = date.getFullYear() === now.getFullYear();
   return date.toLocaleDateString(undefined, {

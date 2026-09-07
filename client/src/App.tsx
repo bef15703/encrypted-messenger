@@ -16,7 +16,7 @@ import { socket, connectWithIdentity } from "./lib/socket";
 import { MessageList } from "./components/MessageList";
 import { MessageInput } from "./components/MessageInput";
 import { KeyExchangeModal } from "./components/KeyExchangeModal";
-import { ProfileModal } from "./components/profileModal";
+import { ProfileModal } from "./components/ProfileModal";
 import { formatDate } from "./lib/utils";
 import "./App.css";
 
@@ -169,28 +169,40 @@ export default function App() {
         };
         await db.put("messages", localRecord);
 
-        if (data.senderDisplayName) {
-          const existingContact = await db.get("contacts", data.senderId);
+        let existingContact = await db.get("contacts", data.senderId);
+
+        if (!existingContact || !existingContact.publicKey) {
+          socket.emit("lookup_user", data.senderId, async (res) => {
+            if (res.success && res.publicKey) {
+              const newContact: Contact = {
+                userId: data.senderId,
+                displayName: data.senderDisplayName || res.displayName || "Unknown",
+                publicKey: res.publicKey,
+                lastSeen: messageTimestamp,
+              };
+              const innerDb = await getDb();
+              await innerDb.put("contacts", newContact);
+              setContacts((prev) => [
+                ...prev.filter((c) => c.userId !== data.senderId),
+                newContact,
+              ]);
+            }
+          });
+        } else {
           const updatedContact: Contact = {
-            userId: data.senderId,
-            displayName: data.senderDisplayName || existingContact?.displayName || "Unknown",
-            publicKey: existingContact?.publicKey || data.packet.ephemeralPublicKey, // Or require key lookup
+            ...existingContact,
+            displayName: data.senderDisplayName || existingContact.displayName,
             lastSeen: messageTimestamp,
           };
-
           await db.put("contacts", updatedContact);
-
-          setContacts((prev) => {
-            const exists = prev.some((c) => c.userId === data.senderId);
-            return exists
-              ? prev.map((c) => (c.userId === data.senderId ? updatedContact : c))
-              : [...prev, updatedContact];
-          });
+          setContacts((prev) =>
+            prev.map((c) => (c.userId === data.senderId ? updatedContact : c))
+          );
 
           setPeer((prev) =>
             prev && prev.userId === data.senderId
               ? { ...prev, name: updatedContact.displayName }
-              : prev
+              : prev,
           );
         }
 
@@ -241,7 +253,11 @@ export default function App() {
 
       socket.emit(
         "send_packet",
-        { recipientId: peer.userId, senderDisplayName: identity.displayName, packet },
+        {
+          recipientId: peer.userId,
+          senderDisplayName: identity.displayName,
+          packet,
+        },
         (res) => {
           if (!res.success) {
             console.warn("[App] Relay response warning:", res.error);
@@ -308,7 +324,21 @@ export default function App() {
       const updated = await updateDisplayName(identity, newName);
       setIdentity(updated);
 
-      await connectWithIdentity(updated);
+      socket.emit(
+        "update_display_name",
+        {
+          userId: updated.userId,
+          displayName: updated.displayName,
+        },
+        (res) => {
+          if (!res.success) {
+            console.warn(
+              "[App] Failed to update name on relay server:",
+              res.error,
+            );
+          }
+        },
+      );
     }
     setIsProfileModalOpen(false);
   };

@@ -38,6 +38,14 @@ export interface ClientToServerEvents {
     callback: (res: { success: boolean; error?: string }) => void
   ) => void;
 
+  update_display_name: (
+    payload: {
+      userId: string;
+      displayName: string;
+    },
+    callback: (res: { success: boolean; error?: string }) => void
+  ) => void;
+
   lookup_user: (
     targetUserId: string,
     callback: (res: {

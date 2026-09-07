@@ -8,22 +8,23 @@ interface MessageInputProps {
 export function MessageInput({onSendMessage, disabled}: MessageInputProps) {
     const [text, setText] = useState('');
 
+    const submitCurrentMessage = () => {
+        const trimmed = text.trim()
+        if (!trimmed || disabled) return;
+        onSendMessage(trimmed);
+        setText(""); //Clear input after send
+    };
+
     const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (!text.trim() || disabled) return;
-
-            onSendMessage(text);
-            setText('');
+            submitCurrentMessage();
         }
     };
 
     const handleSubmit = (e: SubmitEvent) => {
         e.preventDefault(); //Prevents browser reload
-        if (!text.trim() || disabled) return;
-
-        onSendMessage(text);
-        setText(''); //Clear input after send
+        submitCurrentMessage();
     };
 
     return (

@@ -4,6 +4,14 @@ Full stack, real-time secure messaging application with end-to-end encryption (E
 
 **Live Demo:** [Vercel Client](https://encrypted-messenger-client.vercel.app) | **Relay:** Hosted on Railway
 
+## Contents
+- [Features](#features)
+- [Architecture & Cryptographic Flow](#architecture--cryptographic-flow)
+- [Tech Stack](#tech-stack)
+- [Local Deployment](#local-deployment)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+
 ## Features
 - **Client-Side Cryptography**: Key generation and encryption execute exclusively inside the browser via the Web Crypto API. The server never observes private keys or plaintext.
 - **Asymmetric & Symmetric Hybrid Encryption**: Employs ECDH (Elliptic-Curve Diffie-Hellman) for key exchange paired with AES-GCM (256-bit) for authenticated ciphertext payload delivery.
@@ -64,7 +72,7 @@ CLIENT_URL=http://localhost:5173
 VITE_SERVER_URL=http://localhost:4000`
 ```
 
-4. Launch Services:
+4. Launch Services
 ```
 $ npm run dev
 ```

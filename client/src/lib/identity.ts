@@ -56,6 +56,28 @@ export async function createNewIdentity(displayName: string): Promise<ActiveIden
     };
 }
 
+export async function updateDisplayName(current: ActiveIdentity, newDisplayName: string): Promise<ActiveIdentity> {
+    const cleanName = newDisplayName.trim() || 'Anonymous';
+    const db = await getDb();
+    const existingRecord: StoredIdentity | undefined = await db.get('identity', 'current_user');
+
+    if (!existingRecord) {
+        throw new Error('Cannot update display name: No identity found.');
+    }
+
+    const updatedRecord: StoredIdentity = {
+        ...existingRecord,
+        displayName: cleanName
+    };
+
+    await db.put('identity', updatedRecord, 'current_user');
+
+    return {
+        ...current,
+        displayName: cleanName
+    };
+}
+
 export async function initOrGetIdentity(defaultName: string = 'User'): Promise<ActiveIdentity> {
     const existing = await loadStoredIdentity();
     if (existing) {

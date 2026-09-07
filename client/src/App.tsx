@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   encryptMessage,
   decryptMessage,
@@ -6,29 +6,40 @@ import {
 } from "./lib/crypto";
 import { type ChatMessage, type PeerProfile } from "./lib/types";
 import { getDb, type LocalMessage, type Contact } from "./lib/db";
-import { initOrGetIdentity, type ActiveIdentity } from "./lib/identity";
+import {
+  loadStoredIdentity,
+  createNewIdentity,
+  updateDisplayName,
+  type ActiveIdentity,
+} from "./lib/identity";
 import { socket, connectWithIdentity } from "./lib/socket";
 import { MessageList } from "./components/MessageList";
 import { MessageInput } from "./components/MessageInput";
 import { KeyExchangeModal } from "./components/KeyExchangeModal";
+import { ProfileModal } from "./components/profileModal";
 import { formatDate } from "./lib/utils";
 import "./App.css";
 
 import personIcon from "./assets/person.fill.svg";
 import xmark from "./assets/xmark.svg";
+import gear from "./assets/gearshape.fill.svg";
 
 export default function App() {
   // Active user's identity and socket connection state
   const [identity, setIdentity] = useState<ActiveIdentity | null>(null);
   const [, setIsConnected] = useState<boolean>(false);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   // Active peer session and multi-chat contact state
   const [peer, setPeer] = useState<PeerProfile | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, number>>({});
+  const [lastMessageTimes, setLastMessageTimes] = useState<
+    Record<string, number>
+  >({});
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleSelectContact = (contact: Contact) => {
@@ -51,15 +62,16 @@ export default function App() {
 
     async function init() {
       try {
-        const activeIdentity = await initOrGetIdentity("Brady");
+        const storedIdentity = await loadStoredIdentity();
         if (!isMounted) return;
-        setIdentity(activeIdentity);
 
-        // Connects socket & register identity
-        const registered = await connectWithIdentity(activeIdentity);
-        if (!isMounted) return;
-        setIsConnected(registered);
-
+        if (storedIdentity) {
+          setIdentity(storedIdentity);
+          const registered = await connectWithIdentity(storedIdentity);
+          if (isMounted) setIsConnected(registered);
+        } else {
+          setIsProfileModalOpen(true);
+        }
         // Loads saved contacts from IndexedDB
         const db = await getDb();
         const [savedContacts, allMessages] = await Promise.all([
@@ -72,7 +84,10 @@ export default function App() {
 
           const times: Record<string, number> = {};
           for (const msg of allMessages) {
-            if (!times[msg.conversationId] || msg.timestamp > times[msg.conversationId]) {
+            if (
+              !times[msg.conversationId] ||
+              msg.timestamp > times[msg.conversationId]
+            ) {
               times[msg.conversationId] = msg.timestamp;
             }
           }
@@ -154,6 +169,31 @@ export default function App() {
         };
         await db.put("messages", localRecord);
 
+        if (data.senderDisplayName) {
+          const existingContact = await db.get("contacts", data.senderId);
+          const updatedContact: Contact = {
+            userId: data.senderId,
+            displayName: data.senderDisplayName || existingContact?.displayName || "Unknown",
+            publicKey: existingContact?.publicKey || data.packet.ephemeralPublicKey, // Or require key lookup
+            lastSeen: messageTimestamp,
+          };
+
+          await db.put("contacts", updatedContact);
+
+          setContacts((prev) => {
+            const exists = prev.some((c) => c.userId === data.senderId);
+            return exists
+              ? prev.map((c) => (c.userId === data.senderId ? updatedContact : c))
+              : [...prev, updatedContact];
+          });
+
+          setPeer((prev) =>
+            prev && prev.userId === data.senderId
+              ? { ...prev, name: updatedContact.displayName }
+              : prev
+          );
+        }
+
         setLastMessageTimes((prev) => ({
           ...prev,
           [data.senderId]: messageTimestamp,
@@ -201,7 +241,7 @@ export default function App() {
 
       socket.emit(
         "send_packet",
-        { recipientId: peer.userId, packet },
+        { recipientId: peer.userId, senderDisplayName: identity.displayName, packet },
         (res) => {
           if (!res.success) {
             console.warn("[App] Relay response warning:", res.error);
@@ -258,30 +298,58 @@ export default function App() {
     setPeer(connectedPeer);
   };
 
+  const handleSaveProfile = async (newName: string) => {
+    if (!identity) {
+      const created = await createNewIdentity(newName);
+      setIdentity(created);
+      const registered = await connectWithIdentity(created);
+      setIsConnected(registered);
+    } else {
+      const updated = await updateDisplayName(identity, newName);
+      setIdentity(updated);
+
+      await connectWithIdentity(updated);
+    }
+    setIsProfileModalOpen(false);
+  };
+
+  const sortedContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => {
+      const timeA = lastMessageTimes[a.userId] ?? 0;
+      const timeB = lastMessageTimes[b.userId] ?? 0;
+      if (timeB !== timeA) {
+        return timeB - timeA;
+      }
+      return a.displayName.localeCompare(b.displayName);
+    });
+  }, [contacts, lastMessageTimes]);
+
   return (
     <div className="app-layout">
-      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
           {!isSidebarCollapsed && <h3>Chats</h3>}
           <div className="sidebar-header-actions">
             {!isSidebarCollapsed && (
               <div className="horizontal">
-              <button
-                type="button"
-                className="new-chat-btn"
-                onClick={() => setIsModalOpen(true)}
-              >
-                New Chat
-              </button>
-              <button
-              type="button"
-              className="toggle-sidebar-btn"
-              onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-              title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <img src={xmark} alt="close contacts" className="icon"/>
-            </button>
-            </div>
+                <button
+                  type="button"
+                  className="new-chat-btn"
+                  onClick={() => setIsNewChatModalOpen(true)}
+                >
+                  New Chat
+                </button>
+                <button
+                  type="button"
+                  className="header-btn"
+                  onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+                  title={
+                    isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                  }
+                >
+                  <img src={xmark} alt="close contacts" className="icon" />
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -291,18 +359,22 @@ export default function App() {
             {contacts.length === 0 ? (
               <p className="empty-contacts-text">No contacts saved yet.</p>
             ) : (
-              contacts.map((contact) => (
+              sortedContacts.map((contact) => (
                 <button
                   key={contact.userId}
                   type="button"
-                  className={`contact-item ${peer?.userId === contact.userId ? 'active' : ''}`}
+                  className={`contact-item ${peer?.userId === contact.userId ? "active" : ""}`}
                   onClick={() => handleSelectContact(contact)}
                 >
                   <div className="vertical">
                     <div className="contact-name">{contact.displayName}</div>
                     <div className="contact-id">{contact.userId}</div>
                   </div>
-                  <span className="last-chat-time">{lastMessageTimes[contact.userId] ? formatDate(lastMessageTimes[contact.userId]) : ""}</span>
+                  <span className="last-chat-time">
+                    {lastMessageTimes[contact.userId]
+                      ? formatDate(lastMessageTimes[contact.userId])
+                      : ""}
+                  </span>
                 </button>
               ))
             )}
@@ -310,63 +382,75 @@ export default function App() {
         )}
       </aside>
 
-      <div className={`main-column ${isSidebarCollapsed ? '' : 'collapsed'}`}>
+      <div className={`main-column ${isSidebarCollapsed ? "" : "collapsed"}`}>
         <header className="app-header">
           <div className="horizontal">
             {isSidebarCollapsed && (
-          <button
-              type="button"
-              className="toggle-sidebar-btn"
-              onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-              title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <img src={personIcon} alt="open contacts" className="icon"/>
-            </button> )}
+              <button
+                type="button"
+                className="header-btn"
+                onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+                title={
+                  isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                }
+              >
+                <img src={personIcon} alt="open contacts" className="icon" />
+              </button>
+            )}
             <h2>{peer ? peer.name : "Encrypted Messenger"}</h2>
           </div>
           {peer && (
             <div className="active-peer-info">
-              <span className={"peer-badge " + (peer.online ? "online" : "offline")}>
+              {/* <span className={"peer-badge " + (peer.online ? "online" : "offline")}>
                 {peer.online ? "Online" : "Offline"}
-              </span>
+              </span>*/}
             </div>
           )}
+          <button
+            type="button"
+            className="header-btn"
+            onClick={() => setIsProfileModalOpen((prev) => !prev)}
+            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <img src={gear} alt="open settings" className="icon" />
+          </button>
         </header>
 
-          <section className="chat-pane">
-            {peer ? (
-              <div className="chat-container">
-                <MessageList messages={messages} />
-                <MessageInput onSendMessage={handleSendMessage} />
-              </div>
-            ) : (
-              <div className="empty-chat-pane">
-                <p>Select a conversation from the sidebar or click <strong>New Chat</strong> to connect with a peer.</p>
-              </div>
-            )}
-          </section>
+        <section className="chat-pane">
+          {peer ? (
+            <div className="chat-container">
+              <MessageList messages={messages} />
+              <MessageInput onSendMessage={handleSendMessage} />
+            </div>
+          ) : (
+            <div className="empty-chat-pane">
+              <p>
+                Select a conversation from the sidebar or click{" "}
+                <strong>New Chat</strong> to connect with a peer.
+              </p>
+            </div>
+          )}
+        </section>
       </div>
 
-      {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content-wrapper">
-            <button
-              type="button"
-              className="modal-close-icon"
-              onClick={() => setIsModalOpen(false)}
-            >
-              <img src={xmark} alt="close contacts" className="icon"/>
-            </button>
-            <KeyExchangeModal
-              myUserId={identity?.userId || null}
-              onConnectPeer={(newPeer) => {
-                handleConnectPeer(newPeer);
-                setIsModalOpen(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
+      <KeyExchangeModal
+        isOpen={isNewChatModalOpen}
+        myUserId={identity?.userId || null}
+        onConnectPeer={(newPeer) => {
+          handleConnectPeer(newPeer);
+          setIsNewChatModalOpen(false);
+        }}
+        onClose={identity ? () => setIsNewChatModalOpen(false) : undefined}
+      />
+
+      {/* Onboarding & Edit Profile Modal */}
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        identity={identity}
+        isFirstRun={!identity}
+        onSave={handleSaveProfile}
+        onClose={identity ? () => setIsProfileModalOpen(false) : undefined}
+      />
     </div>
   );
 }

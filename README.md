@@ -49,31 +49,31 @@ Full stack, real-time secure messaging application with end-to-end encryption (E
 
 ### Installation
 1. Clone the repository
-```
+```bash
 $ git clone https://github.com/bef15703/encrypted-messenger
 $ cd encrypted-messenger
 ```
 
 2. Install Dependencies
-```
+```bash
 $ npm install
 ```
 
 3. Configure Environment Variables
 - Create `.env` in `server/`
-```
+```properties
 PORT=4000
 DATABASE_URL=postgresql://user:password@localhost:5432/messenger
 CLIENT_URL=http://localhost:5173
 ```
 
 - Create `.env` in `client/`
-```
+```properties
 VITE_SERVER_URL=http://localhost:4000`
 ```
 
 4. Launch Services
-```
+```bash
 $ npm run dev
 ```
 

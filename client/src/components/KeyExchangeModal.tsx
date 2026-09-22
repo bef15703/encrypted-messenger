@@ -78,7 +78,7 @@ export function KeyExchangeModal({
     <div className="modal-backdrop">
       <div className="modal-content-wrapper">
         {onClose && (
-          <button type="button" className="modal-close-icon" onClick={onClose}>
+          <button type="button" className="modal-close-icon icon-btn" onClick={onClose}>
             <i className="fa-solid fa-xmark icon"></i>
           </button>
         )}

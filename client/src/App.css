@@ -1,6 +1,10 @@
 :root {
   --bg-surface: #ffffff;       
-  --border-color: #d2d2d2;     
+  --border-color: #d2d2d2;
+  
+  --secondary-bg: #f5f5f5;
+
+  --modal-bg: rgba(0, 0, 0, 0.7);
   
   --primary: #0176FF;          
   --primary-hover: #489dfd;
@@ -11,11 +15,42 @@
   
   --bubble-received: #acacac;  
   --bubble-received-text: #000000;
+
+  --scrollbar-thumb-color: #00000055;
+  --scrollbar-track-color: #00000022;
 }
-  
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-surface: #000000;       
+    --border-color: #2d2d2d;   
+    
+    --secondary-bg: #0e0e0e;
+
+    --modal-bg: rgba(255, 255, 255, 0.3);
+    
+    --primary: #0176FF;          
+    --primary-hover: #004da5;
+    --primary-text: #ffffff;
+    
+    --text-main: #ffffff;        
+    --text-muted: #848484;       
+    
+    --bubble-received: #535353;  
+    --bubble-received-text: #ffffff;
+
+    --scrollbar-thumb-color: #ffffff55;
+    --scrollbar-track-color: #ffffff22;
+  }
+}
+
 
 *, *::before, *::after {
   box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-surface);
 }
 
 /* General components */
@@ -49,7 +84,6 @@
   height: 100vh;
   width: 100vw;
   overflow: hidden;
-
   font-family:Verdana, Geneva, Tahoma, sans-serif;
 }
 
@@ -62,7 +96,7 @@
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-surface);
+  background-color: var(--bg-surface);
 }
 
 /* Top Heading */
@@ -91,27 +125,6 @@
   color: var(--text-main);
 }
 
-.peer-badge {
-  font-size: 0.85rem;
-  background: #eff6ff;
-  color: var(--primary);
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid #bfdbfe;
-}
-
-.online {
-  background: #f1ffef;
-  border-color: #cdfebf;
-  color: #1e8b00;
-}
-
-.offline {
-  background: #ffefef;
-  border-color: #bfdbfe;
-  color: #8b0000;
-}
-
 /* Contact Side Bar */
 
 .sidebar {
@@ -123,7 +136,7 @@
   border-radius: 1.5em;
   border: 1px solid var(--border-color);
   transition: transform 0.25s ease, width 0.25s ease;
-  background: var(--bg-surface);
+  background-color: var(--bg-surface);
 }
   
 
@@ -131,6 +144,7 @@
   transform: translateX(-100%);
   width: 0px;
   min-width: 0px;
+  margin: 0px;
 }
 
 .sidebar-header {
@@ -138,12 +152,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 8px;
-  /* border-bottom: 1px solid var(--border-color); */
 }
 
 .sidebar-header h3 {
   margin: 0;
   font-size: 1.1rem;
+  color: var(--text-main);
 }
 
 .sidebar-header-actions {
@@ -152,9 +166,7 @@
   gap: .5em;
 }
 
-.header-btn {
-  background: none;
-  border: none;
+.icon-btn {
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -165,9 +177,10 @@
   background-color: #e0e0e033;
   border: 0.95px solid var(--border-color);
   border-radius: 9999px;
+  transition: background-color 0.15s ease-in-out;
 }
 
-.header-btn:hover {
+.icon-btn:hover {
   background-color: #e0e0e0bb;
 }
 
@@ -180,6 +193,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
 }
 
 .new-chat-btn:hover {
@@ -205,7 +219,7 @@
 .contact-item {
   width: 100%;
   text-align: left;
-  background: transparent;
+  background-color: transparent;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 12px;
@@ -216,6 +230,7 @@
   align-items: center;
   gap: 4px;
   color: var(--text-main);
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
 }
 
 .contact-item:hover {
@@ -302,7 +317,7 @@
   border-radius: 9999px;
   border: 1px solid var(--border-color);
   font-size: 0.85rem;
-  background: #f5f5f5;
+  background-color: var(--secondary-bg);
   color: var(--text-muted);
 }
 
@@ -329,14 +344,14 @@
 
 .message-bubble.sent {
   align-self: flex-end;
-  background: var(--primary);
+  background-color: var(--primary);
   color: var(--primary-text);
   border-bottom-right-radius: 2px;
 }
 
 .message-bubble.received {
   align-self: flex-start;
-  background: var(--bubble-received);
+  background-color: var(--bubble-received);
   color: var(--bubble-received-text);
   border-bottom-left-radius: 2px;
 }
@@ -372,7 +387,7 @@
   padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: 1.5em;
-  background: var(--bg-surface);
+  background-color: var(--bg-surface);
   margin: 10px;
   align-items: flex-end;
 }
@@ -384,6 +399,7 @@
   outline: none;
   font-family: inherit;
   font-size: 1rem;
+  color: var(--text-main);
   field-sizing: content; 
   resize: none;
   line-height: 1.5em;
@@ -393,8 +409,7 @@
   max-height: calc(5 * 1.5em + 1.5em); /*5 (max line count) * 1.5 (line height) + 1.5 (total horizontal padding) */
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #00000055 #00000022; /* thumb - track */
-  background: none;
+  scrollbar-color: var(--scrollbar-thumb-color) var(--scrollbar-track-color); /* thumb - track */
 }
 
 .chat-input-form button {
@@ -403,15 +418,16 @@
   font-weight: 600;
   padding: 0 1em;
   height: calc(1 * 1.5em + 1.5em);
-  background: var(--primary);
+  background-color: var(--primary);
   color: var(--primary-text);
   border: none;
   border-radius: calc(1.5em - .5em); /*1.5 (outer radius) - .5 (padding between borders) */
   cursor: pointer; 
+  transition: background-color 0.15s ease-in-out;
 }
 
 .chat-input-form button:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background-color: var(--primary-hover);
 }
 
 .chat-input-form button:disabled {
@@ -433,7 +449,6 @@
 .modal-card h3 {
   font-size: 1rem;
   margin: 0px;
-  color: var(--text-main);
 }
 
 .modal-card input {
@@ -443,6 +458,8 @@
   border-radius: .75em;
   font-family: inherit;
   font-size: 1rem;
+  color: inherit;
+  background-color: var(--bg-surface);
 }
 
 .modal-card button {
@@ -450,16 +467,16 @@
   font-family: inherit;
   font-weight: 600;
   padding: .75em 1em;
-  background: var(--primary);
+  background-color: var(--primary);
   color: var(--primary-text);
   border: none;
   border-radius: .75em;
   cursor: pointer;
-  transition: background 0.15s ease-in-out;
+  transition: background-color 0.15s ease-in-out;
 }
 
 .modal-card button:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background-color: var(--primary-hover);
 }
 
 .modal-card button:disabled {
@@ -484,7 +501,7 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: var(--modal-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -500,22 +517,15 @@
   padding: 24px;
   max-width: 440px;
   width: 90%;
-  /*box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);*/
+  color: var(--text-main);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
 .modal-close-icon {
   position: absolute;
-  top: .75rem;
-  right: .75rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.modal-close-icon:hover {
-  color: var(--text-main);
+  top: 16px;
+  right: 16px;
+  width: fit-content;
 }
 
 /* Mobile Device Styling */

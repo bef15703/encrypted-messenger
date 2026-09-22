@@ -368,7 +368,7 @@ export default function App() {
                 </button>
                 <button
                   type="button"
-                  className="header-btn"
+                  className="icon-btn"
                   onClick={() => setIsSidebarCollapsed((prev) => !prev)}
                   title={
                     isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
@@ -415,7 +415,7 @@ export default function App() {
             {isSidebarCollapsed && (
               <button
                 type="button"
-                className="header-btn"
+                className="icon-btn"
                 onClick={() => setIsSidebarCollapsed((prev) => !prev)}
                 title={
                   isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
@@ -428,7 +428,7 @@ export default function App() {
           </div>
           <button
             type="button"
-            className="header-btn"
+            className="icon-btn"
             onClick={() => setIsProfileModalOpen((prev) => !prev)}
             title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >

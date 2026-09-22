@@ -54,7 +54,7 @@ export function ProfileModal({
         {!isFirstRun && onClose && (
           <button
             type="button"
-            className="modal-close-icon"
+            className="modal-close-icon icon-btn"
             onClick={onClose}
             aria-label="Close"
           >

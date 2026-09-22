@@ -20,9 +20,6 @@ import { ProfileModal } from "./components/ProfileModal";
 import { formatDate } from "./lib/utils";
 import "./App.css";
 
-import personIcon from "./assets/person.fill.svg";
-import xmark from "./assets/xmark.svg";
-import gear from "./assets/gearshape.fill.svg";
 
 export default function App() {
   // Active user's identity and socket connection state
@@ -377,7 +374,7 @@ export default function App() {
                     isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
                   }
                 >
-                  <img src={xmark} alt="close contacts" className="icon" />
+                  <i className="fa-solid fa-xmark icon"></i>
                 </button>
               </div>
             )}
@@ -424,25 +421,18 @@ export default function App() {
                   isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
                 }
               >
-                <img src={personIcon} alt="open contacts" className="icon" />
+                <i className="fa-solid fa-user-group icon"></i>
               </button>
             )}
             <h2>{peer ? peer.name : "Encrypted Messenger"}</h2>
           </div>
-          {peer && (
-            <div className="active-peer-info">
-              {/* <span className={"peer-badge " + (peer.online ? "online" : "offline")}>
-                {peer.online ? "Online" : "Offline"}
-              </span>*/}
-            </div>
-          )}
           <button
             type="button"
             className="header-btn"
             onClick={() => setIsProfileModalOpen((prev) => !prev)}
             title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <img src={gear} alt="open settings" className="icon" />
+            <i className="fa-solid fa-gear icon"></i>
           </button>
         </header>
 

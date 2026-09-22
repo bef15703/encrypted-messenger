@@ -1,6 +1,5 @@
 import { useState, useEffect} from "react";
 import { type ActiveIdentity } from "../lib/identity";
-import xmark from "../assets/xmark.svg";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -59,7 +58,7 @@ export function ProfileModal({
             onClick={onClose}
             aria-label="Close"
           >
-            <img src={xmark} alt="close" className="icon" />
+            <i className="fa-solid fa-xmark icon"></i>
           </button>
         )}
         <h3>

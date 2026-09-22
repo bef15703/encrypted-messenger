@@ -3,7 +3,6 @@ import { socket } from "../lib/socket";
 import { isValidUserId } from "../lib/id";
 import { getDb, type Contact } from "../lib/db";
 import { type PeerProfile } from "../lib/types";
-import xmark from "../assets/xmark.svg";
 
 interface KeyExchangeProps {
   isOpen: boolean;
@@ -80,7 +79,7 @@ export function KeyExchangeModal({
       <div className="modal-content-wrapper">
         {onClose && (
           <button type="button" className="modal-close-icon" onClick={onClose}>
-            <img src={xmark} alt="close contacts" className="icon" />
+            <i className="fa-solid fa-xmark icon"></i>
           </button>
         )}
 

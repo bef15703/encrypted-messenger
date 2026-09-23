@@ -108,7 +108,7 @@ export function KeyExchangeModal({
           >
             {isSubmitting ? "Looking up..." : "Connect"}
           </button>
-          <p>Other user must also enter your code to view messages you send</p>
+          {/* <p>Other user must also enter your code to view messages you send</p> */}
         </div>
       </div>
     </div>

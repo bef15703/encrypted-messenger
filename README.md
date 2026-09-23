@@ -11,6 +11,7 @@ Full stack, real-time secure messaging application with end-to-end encryption (E
 - [Local Deployment](#local-deployment)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
+- [Directory Layout](#directory-layout)
 
 ## Features
 - **Client-Side Cryptography**: Key generation and encryption execute exclusively inside the browser via the Web Crypto API. The server never observes private keys or plaintext.
@@ -23,7 +24,8 @@ Full stack, real-time secure messaging application with end-to-end encryption (E
 ```
 [ Client A (Browser) ]
        │  1. Generates ephemeral keys via Web Crypto API
-       │  2. Encrypts payload with Recipient's Public Key (AES-GCM)
+       │  2. Derives symmetric key via ECDH + Recipient Public 
+       │     Key and encrypts payload with AES-256-GCM
        ▼
 [ Railway Relay (Node.js / Socket.io) ]
        │  3. Routes raw ciphertext (Zero access to plaintext or private keys)
@@ -69,12 +71,42 @@ CLIENT_URL=http://localhost:5173
 
 - Create `.env` in `client/`
 ```properties
-VITE_SERVER_URL=http://localhost:4000`
+VITE_SERVER_URL=http://localhost:4000
 ```
 
 4. Launch Services
 ```bash
 $ npm run dev
+```
+
+## Directory Layout
+
+```text
+.
+├── client
+│   ├── src
+│   │   ├── components
+│   │   │   ├── KeyExchangeModal.tsx
+│   │   │   ├── MessageInput.tsx
+│   │   │   ├── MessageList.tsx
+│   │   │   └── ProfileModal.tsx
+│   │   ├── lib
+│   │   │   ├── crypto.ts
+│   │   │   ├── db.ts
+│   │   │   ├── identity.ts
+│   │   │   ├── socket.ts      
+│   │   │   └── types.ts
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   └── package.json
+├── server
+│   ├── src
+│   │   ├── db.ts
+│   │   ├── index.ts
+│   │   └── types.ts
+│   └── package.json
+├── package.json
+└── README.md
 ```
 
 

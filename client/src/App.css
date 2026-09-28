@@ -1,10 +1,11 @@
 :root {
+  --gradient-bg: url("assets/light-background.svg");
   --bg-surface: #ffffff;       
   --border-color: #d2d2d2;
-  
   --secondary-bg: #f5f5f5;
-
   --modal-bg: rgba(0, 0, 0, 0.7);
+  --glass-bg-color:  rgba(255, 255, 255, 0.25);
+  --glass-bg-color-bold:  rgba(255, 255, 255, 0.5);
   
   --primary: #0176FF;          
   --primary-hover: #489dfd;
@@ -22,12 +23,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    --gradient-bg: url("assets/dark-background.svg");
     --bg-surface: #000000;       
     --border-color: #2d2d2d;   
-    
     --secondary-bg: #0e0e0e;
-
     --modal-bg: rgba(255, 255, 255, 0.3);
+    --glass-bg-color:  rgba(0, 0, 0, 0.25);
+    --glass-bg-color-bold:  rgba(0, 0, 0, 0.7);
+  
     
     --primary: #0176FF;          
     --primary-hover: #004da5;
@@ -50,7 +53,9 @@
 }
 
 body {
-  background-color: var(--bg-surface);
+  background-image: var(--gradient-bg);
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 /* General components */
@@ -77,6 +82,26 @@ body {
   align-self: center;
 }
 
+.unselectable {
+   -moz-user-select: none;
+   -khtml-user-select: none;
+   -webkit-user-select: none;
+   -ms-user-select: none;
+   user-select: none;
+}
+
+.glass-bg {
+  background-color: var(--glass-bg-color);
+  backdrop-filter: blur(16px);
+  border-radius: inherit;
+}
+
+.glass-bg-bold {
+  background-color: var(--glass-bg-color-bold);
+  backdrop-filter: blur(16px);
+  border-radius: inherit;
+}
+
 /* Outermost container */
 .app-layout {
   display: flex;
@@ -96,7 +121,6 @@ body {
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  background-color: var(--bg-surface);
 }
 
 /* Top Heading */
@@ -107,15 +131,24 @@ body {
   left: 0;
   right: 0;
   z-index: 10;
-  pointer-events: none;
-
-  background: linear-gradient(to bottom, var(--bg-surface) 70%, color-mix(in srgb, var(--bg-surface) 0%, transparent) 100%);
+  
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 16px 8px;
   padding-bottom: 1.25em;
   pointer-events: all;
+}
+
+.app-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+
+  backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+  
 }
 
 .app-header h2 {
@@ -136,7 +169,6 @@ body {
   border-radius: 1.5em;
   border: 1px solid var(--border-color);
   transition: transform 0.25s ease, width 0.25s ease;
-  background-color: var(--bg-surface);
 }
   
 
@@ -174,14 +206,15 @@ body {
   font-size: 1.25rem;
   padding: 4px;
   aspect-ratio: 1 / 1;
-  background-color: #e0e0e033;
+  background-color: var(--glass-bg-color-bold);
+  backdrop-filter: blur(16px);
   border: 0.95px solid var(--border-color);
   border-radius: 9999px;
   transition: background-color 0.15s ease-in-out;
 }
 
 .icon-btn:hover {
-  background-color: #e0e0e0bb;
+  background-color: var(--glass-bg-color);
 }
 
 .new-chat-btn {
@@ -219,7 +252,6 @@ body {
 .contact-item {
   width: 100%;
   text-align: left;
-  background-color: transparent;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 10px 12px;
@@ -317,7 +349,6 @@ body {
   border-radius: 9999px;
   border: 1px solid var(--border-color);
   font-size: 0.85rem;
-  background-color: var(--secondary-bg);
   color: var(--text-muted);
 }
 
@@ -387,7 +418,6 @@ body {
   padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: 1.5em;
-  background-color: var(--bg-surface);
   margin: 10px;
   align-items: flex-end;
 }
@@ -511,7 +541,6 @@ body {
 
 .modal-content-wrapper {
   position: relative;
-  background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 24px;

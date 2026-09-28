@@ -28,7 +28,7 @@ export function MessageInput({onSendMessage, disabled}: MessageInputProps) {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="chat-input-form">
+        <form onSubmit={handleSubmit} className="chat-input-form glass-bg">
             <textarea
                 placeholder={disabled? "Connect to a peer to chat..." : "Type an encrypted message..."}
                 value={text}

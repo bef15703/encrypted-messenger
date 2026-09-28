@@ -353,7 +353,7 @@ export default function App() {
 
   return (
     <div className="app-layout">
-      <aside className={`sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
+      <aside className={` glass-bg sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
         <div className="sidebar-header">
           {!isSidebarCollapsed && <h3>Chats</h3>}
           <div className="sidebar-header-actions">
@@ -390,7 +390,7 @@ export default function App() {
                 <button
                   key={contact.userId}
                   type="button"
-                  className={`contact-item ${peer?.userId === contact.userId ? "active" : ""}`}
+                  className={`contact-item glass-bg ${peer?.userId === contact.userId ? "active" : ""}`}
                   onClick={() => handleSelectContact(contact)}
                 >
                   <div className="vertical">
@@ -430,7 +430,7 @@ export default function App() {
             type="button"
             className="icon-btn"
             onClick={() => setIsProfileModalOpen((prev) => !prev)}
-            title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title="Profile Settings"
           >
             <i className="fa-solid fa-gear icon"></i>
           </button>

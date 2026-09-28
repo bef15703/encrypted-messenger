@@ -50,7 +50,7 @@ export function ProfileModal({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-content-wrapper">
+      <div className="modal-content-wrapper glass-bg-bold">
         {!isFirstRun && onClose && (
           <button
             type="button"
@@ -90,7 +90,6 @@ export function ProfileModal({
 
           <button
             type="submit"
-            className="primary-action-btn"
             disabled={!name.trim() || isSubmitting}
           >
             {isSubmitting

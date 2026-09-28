@@ -51,7 +51,7 @@ export function MessageList({ messages }: MessageListProps) {
         return (
           <Fragment key={msg.id}>
             {showDateDivider && (
-              <div className="date-divider">
+              <div className="date-divider unselectable glass-bg">
                 <span>{formatChatDividerDate(msg.timestamp)}</span>
               </div>
             )}

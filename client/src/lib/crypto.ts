@@ -39,6 +39,45 @@ export async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
     );
 }
 
+const HKDF_INFO = new TextEncoder().encode("encrypted-messenger-v1-aes-gcm")
+const HKDF_SALT = new Uint8Array();
+
+async function deriveAesKeyFromEcdh(
+    privateKey: CryptoKey,
+    publicKey: CryptoKey,
+    usage: "encrypt" | "decrypt"
+): Promise<CryptoKey> {
+    // Calculates raw Diffie-Hellman shared secret
+    const sharedBits = await window.crypto.subtle.deriveBits(
+        { name: "ECDH", public: publicKey},
+        privateKey,
+        256
+    );
+
+    // Imports raw bits for HKDF
+    const hkdfKey = await window.crypto.subtle.importKey(
+        "raw",
+        sharedBits,
+        { name: "HKDF" },
+        false,
+        ["deriveKey"]
+    );
+
+    return await window.crypto.subtle.deriveKey(
+        {
+            name: "HKDF",
+            hash: "SHA-256",
+            salt: HKDF_SALT,
+            info: HKDF_INFO,
+        }, // Derive Key - HKDF params
+        hkdfKey, // baseKey
+        { name: "AES-GCM", length: 256 }, // derivedKeyType
+        false, // extractable
+        [usage] //keyUsages
+    );
+}
+
+
 // Encrypts a message
 export async function encryptMessage(
     recipientPublicJwk: JsonWebKey,
@@ -58,20 +97,12 @@ export async function encryptMessage(
         ['deriveBits'] //keyUsages
     );
 
-    // Derive from raw bits for wide support (Deriving from ECDH did not work in Safari)
-    const sharedBits = await window.crypto.subtle.deriveBits(
-        { name: 'ECDH', public: recipientKey }, //algorithm
-        ephemeralPair.privateKey, //baseKey
-        256 //length
-    );
-
-    const sharedKey = await window.crypto.subtle.importKey(
-        'raw', //format
-        sharedBits, //keyData
-        {name: 'AES-GCM'}, //algorithm
-        false, //extractable
-        ['encrypt'] //keyUsages
-    );
+    // Shared AES-GCM key is derived using HKDF 
+    const sharedKey = await deriveAesKeyFromEcdh(
+        ephemeralPair.privateKey, // privateKey
+        recipientKey, // publicKey
+        "encrypt" // usage
+    )
 
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // Random 12-byte initialization vector
 
@@ -111,20 +142,12 @@ export async function decryptMessage(
         [] //readonlyArray
     );
 
-    // Derives identical shared secret AES key. Modified from deriveKey to importing key from raw bits for wider browser support
-    const sharedBits = await window.crypto.subtle.deriveBits(
-        {name: 'ECDH', public: ephemeralKey}, //algorithm
-        recipientPrivateKey, //baseKey
-        256 //length
-    );
-
-    const sharedKey = await window.crypto.subtle.importKey(
-        'raw', //format
-        sharedBits, //keyData
-        {name: 'AES-GCM'}, //algorithm
-        false, //extractable
-        ['decrypt'] //keyUsages
-    );
+    // Shared AES-GCM key is derived using HKDF 
+    const sharedKey = await deriveAesKeyFromEcdh(
+        recipientPrivateKey, // privateKey
+        ephemeralKey, // publicKey
+        "decrypt" // usage
+    )
 
     // Decrypts ciphertext buffer
     const decryptBuffer = await window.crypto.subtle.decrypt(

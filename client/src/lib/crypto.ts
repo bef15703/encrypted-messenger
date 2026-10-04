@@ -9,6 +9,18 @@ export interface ExportedKeyPair {
     privateKey: JsonWebKey;
 }
 
+export interface PacketMetadata {
+    senderId: string;
+    recipientId: string;
+    timestamp: number
+}
+
+// Serializes metadata into a deterministic UTF-8 byte sequence, enforcing canonical ordering: senderId:recipientId:timestamp
+export function serializeAad(metadata: PacketMetadata): Uint8Array {
+    const canonicalString = `${metadata.senderId}:${metadata.recipientId}:${metadata.timestamp}`;
+    return new TextEncoder().encode(canonicalString);
+}
+
 // Generates a long-term ECDH key pair
 export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
     return await window.crypto.subtle.generateKey(

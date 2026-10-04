@@ -16,9 +16,9 @@ export interface PacketMetadata {
 }
 
 // Serializes metadata into a deterministic UTF-8 byte sequence, enforcing canonical ordering: senderId:recipientId:timestamp
-export function serializeAad(metadata: PacketMetadata): Uint8Array {
+export function serializeAad(metadata: PacketMetadata): Uint8Array<ArrayBuffer> {
     const canonicalString = `${metadata.senderId}:${metadata.recipientId}:${metadata.timestamp}`;
-    return new TextEncoder().encode(canonicalString);
+    return new TextEncoder().encode(canonicalString) as Uint8Array<ArrayBuffer>;
 }
 
 // Generates a long-term ECDH key pair
@@ -93,7 +93,8 @@ async function deriveAesKeyFromEcdh(
 // Encrypts a message
 export async function encryptMessage(
     recipientPublicJwk: JsonWebKey,
-    plaintext: string
+    plaintext: string,
+    metadata: PacketMetadata
 ): Promise<EncryptedPacket> {
     const recipientKey = await window.crypto.subtle.importKey(
         'jwk', //format
@@ -117,12 +118,12 @@ export async function encryptMessage(
     )
 
     const iv = window.crypto.getRandomValues(new Uint8Array(12)); // Random 12-byte initialization vector
-
     const encodedPlaintext = new TextEncoder().encode(plaintext); // message as raw byte buffer
+    const additionalData = serializeAad(metadata);
 
-    // Encrypts message with shared key
+    // Encrypts message with shared key, binds AAD
     const encryptedBuffer = await window.crypto.subtle.encrypt(
-        {name: 'AES-GCM', iv}, //algorithm
+        {name: 'AES-GCM', iv, additionalData}, //algorithm
         sharedKey, //key
         encodedPlaintext //data
     );
@@ -143,7 +144,8 @@ export async function encryptMessage(
 // Decrypt message
 export async function decryptMessage(
     packet: EncryptedPacket,
-    recipientPrivateKey: CryptoKey
+    recipientPrivateKey: CryptoKey,
+    metadata: PacketMetadata
 ): Promise<string> {
     // Imports sender's one-time public key
     const ephemeralKey = await  window.crypto.subtle.importKey(
@@ -159,11 +161,13 @@ export async function decryptMessage(
         recipientPrivateKey, // privateKey
         ephemeralKey, // publicKey
         "decrypt" // usage
-    )
+    );
+
+    const additionalData = serializeAad(metadata);
 
     // Decrypts ciphertext buffer
     const decryptBuffer = await window.crypto.subtle.decrypt(
-        {name: 'AES-GCM', iv: new Uint8Array(packet.iv)}, //algorithm
+        {name: 'AES-GCM', iv: new Uint8Array(packet.iv), additionalData}, //algorithm
         sharedKey, //key
         new Uint8Array(packet.ciphertext) //data
     );

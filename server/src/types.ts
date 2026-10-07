@@ -49,6 +49,7 @@ export interface ClientToServerEvents {
     send_packet: (
         data: {
             recipientId: string;
+            senderDisplayName: string;
             packet: EncryptedPacket;
             timestamp: number;
             },

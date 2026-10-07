@@ -196,7 +196,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("send_packet", async ({ recipientId, packet }, callback) => {
+  socket.on("send_packet", async ({ recipientId, packet, timestamp }, callback) => {
     const senderId = userIdsBySocketId.get(socket.id);
     if (!senderId) {
       return callback({
@@ -204,6 +204,8 @@ io.on("connection", (socket) => {
         error: `Unauthorized: You must register an identity before sending messages.`,
       });
     }
+
+    const packetTimestamp = typeof timestamp === "number" ? timestamp : Date.now();
 
     const senderSession = sessionsByUserId.get(senderId);
     const cleanRecipientId = recipientId.trim().toUpperCase();
@@ -225,7 +227,7 @@ io.on("connection", (socket) => {
           senderId,
           senderDisplayName,
           packet,
-          timestamp: Date.now(),
+          timestamp: packetTimestamp,
         });
 
         console.log(
@@ -238,7 +240,7 @@ io.on("connection", (socket) => {
           senderId,
           senderDisplayName,
           packet,
-          timestamp: Date.now(),
+          timestamp: packetTimestamp,
         };
 
         await enqueuePacket(cleanRecipientId, queuedPacket);

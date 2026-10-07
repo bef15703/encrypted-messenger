@@ -47,7 +47,11 @@ export interface ClientToServerEvents {
     ) => void;
 
     send_packet: (
-        data: {recipientId: string; packet: EncryptedPacket},
+        data: {
+            recipientId: string;
+            packet: EncryptedPacket;
+            timestamp: number;
+            },
         callback: (response: {success: boolean; error?: string}) => void
     ) => void;
 }

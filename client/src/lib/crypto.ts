@@ -23,7 +23,7 @@ export function serializeAad(metadata: PacketMetadata): Uint8Array<ArrayBuffer> 
 
 // Generates a long-term ECDH key pair
 export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
-    return await window.crypto.subtle.generateKey(
+    return await globalThis.crypto.subtle.generateKey(
         {
             name: 'ECDH',
             namedCurve: 'P-256' // NIST  elliptic curve
@@ -35,14 +35,14 @@ export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
 
 export async function exportKeyPair(keyPair: CryptoKeyPair): Promise<ExportedKeyPair> {
     const [publicKey, privateKey] = await Promise.all([
-        window.crypto.subtle.exportKey('jwk', keyPair.publicKey),
-        window.crypto.subtle.exportKey('jwk', keyPair.privateKey)
+        globalThis.crypto.subtle.exportKey('jwk', keyPair.publicKey),
+        globalThis.crypto.subtle.exportKey('jwk', keyPair.privateKey)
     ]);
     return {publicKey, privateKey};
 }
 
 export async function importPrivateKey(jwk: JsonWebKey): Promise<CryptoKey> {
-    return await window.crypto.subtle.importKey(
+    return await globalThis.crypto.subtle.importKey(
         'jwk',
         jwk,
         {name: 'ECDH', namedCurve: 'P-256'},
@@ -60,14 +60,14 @@ async function deriveAesKeyFromEcdh(
     usage: "encrypt" | "decrypt"
 ): Promise<CryptoKey> {
     // Calculates raw Diffie-Hellman shared secret
-    const sharedBits = await window.crypto.subtle.deriveBits(
+    const sharedBits = await globalThis.crypto.subtle.deriveBits(
         { name: "ECDH", public: publicKey},
         privateKey,
         256
     );
 
     // Imports raw bits for HKDF
-    const hkdfKey = await window.crypto.subtle.importKey(
+    const hkdfKey = await globalThis.crypto.subtle.importKey(
         "raw",
         sharedBits,
         { name: "HKDF" },
@@ -75,7 +75,7 @@ async function deriveAesKeyFromEcdh(
         ["deriveKey"]
     );
 
-    return await window.crypto.subtle.deriveKey(
+    return await globalThis.crypto.subtle.deriveKey(
         {
             name: "HKDF",
             hash: "SHA-256",
@@ -96,7 +96,7 @@ export async function encryptMessage(
     plaintext: string,
     metadata: PacketMetadata
 ): Promise<EncryptedPacket> {
-    const recipientKey = await window.crypto.subtle.importKey(
+    const recipientKey = await globalThis.crypto.subtle.importKey(
         'jwk', //format
         recipientPublicJwk, //keyData
         { name: 'ECDH', namedCurve: 'P-256' }, //algorithm
@@ -104,7 +104,7 @@ export async function encryptMessage(
         [] //keyUsages
     );
 
-    const ephemeralPair = await window.crypto.subtle.generateKey(
+    const ephemeralPair = await globalThis.crypto.subtle.generateKey(
         {name: 'ECDH', namedCurve: 'P-256' }, //algorithm
         true, //extractable,
         ['deriveBits'] //keyUsages
@@ -117,19 +117,19 @@ export async function encryptMessage(
         "encrypt" // usage
     )
 
-    const iv = window.crypto.getRandomValues(new Uint8Array(12)); // Random 12-byte initialization vector
+    const iv = globalThis.crypto.getRandomValues(new Uint8Array(12)); // Random 12-byte initialization vector
     const encodedPlaintext = new TextEncoder().encode(plaintext); // message as raw byte buffer
     const additionalData = serializeAad(metadata);
 
     // Encrypts message with shared key, binds AAD
-    const encryptedBuffer = await window.crypto.subtle.encrypt(
+    const encryptedBuffer = await globalThis.crypto.subtle.encrypt(
         {name: 'AES-GCM', iv, additionalData}, //algorithm
         sharedKey, //key
         encodedPlaintext //data
     );
 
     // Exports public key for recipient to read
-    const ephemeralPublicJwk = await window.crypto.subtle.exportKey(
+    const ephemeralPublicJwk = await globalThis.crypto.subtle.exportKey(
         'jwk',
         ephemeralPair.publicKey
     );
@@ -148,7 +148,7 @@ export async function decryptMessage(
     metadata: PacketMetadata
 ): Promise<string> {
     // Imports sender's one-time public key
-    const ephemeralKey = await  window.crypto.subtle.importKey(
+    const ephemeralKey = await  globalThis.crypto.subtle.importKey(
         'jwk', // format
         packet.ephemeralPublicKey, //keyData
         {name: 'ECDH', namedCurve:'P-256'}, //algorithms
@@ -166,7 +166,7 @@ export async function decryptMessage(
     const additionalData = serializeAad(metadata);
 
     // Decrypts ciphertext buffer
-    const decryptBuffer = await window.crypto.subtle.decrypt(
+    const decryptBuffer = await globalThis.crypto.subtle.decrypt(
         {name: 'AES-GCM', iv: new Uint8Array(packet.iv), additionalData}, //algorithm
         sharedKey, //key
         new Uint8Array(packet.ciphertext) //data

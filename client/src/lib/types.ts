@@ -1,4 +1,4 @@
-import { type EncryptedPacket } from "./crypto.js";
+import { type EncryptedPacket } from "./crypto";
 
 export interface ChatMessage {
     id: string;

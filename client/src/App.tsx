@@ -3,6 +3,7 @@ import {
   encryptMessage,
   decryptMessage,
   type EncryptedPacket,
+  type PacketMetadata
 } from "./lib/crypto";
 import { type ChatMessage, type PeerProfile } from "./lib/types";
 import { getDb, type LocalMessage, type Contact } from "./lib/db";
@@ -25,7 +26,6 @@ export default function App() {
   // Active user's identity and socket connection state
   const [identity, setIdentity] = useState<ActiveIdentity | null>(null);
   const [, setIsConnected] = useState<boolean>(false);
-  const [isInitializing, setIsInitializing] = useState<boolean>(true);
 
   // Active peer session and multi-chat contact state
   const [peer, setPeer] = useState<PeerProfile | null>(null);
@@ -142,17 +142,22 @@ export default function App() {
       senderId: string;
       senderDisplayName: string;
       packet: EncryptedPacket;
-      timestamp?: number;
+      timestamp: number;
     }) => {
       try {
+        const metadata: PacketMetadata = {
+          senderId: data.senderId,
+          recipientId: identity.userId,
+          timestamp: data.timestamp
+        }
         // Decrypts using local private key
         const plaintext = await decryptMessage(
           data.packet,
           identity.privateKey,
+          metadata
         );
 
         const newMessageId = crypto.randomUUID();
-        const messageTimestamp = data.timestamp ?? Date.now();
 
         // Saves decrypted record to IndexedDB
         const db = await getDb();
@@ -161,7 +166,7 @@ export default function App() {
           conversationId: data.senderId,
           senderId: data.senderId,
           text: plaintext,
-          timestamp: messageTimestamp,
+          timestamp: data.timestamp,
           outgoing: false,
         };
         await db.put("messages", localRecord);
@@ -175,7 +180,7 @@ export default function App() {
                 userId: data.senderId,
                 displayName: data.senderDisplayName || res.displayName || "Unknown",
                 publicKey: res.publicKey,
-                lastSeen: messageTimestamp,
+                lastSeen: data.timestamp,
               };
               const innerDb = await getDb();
               await innerDb.put("contacts", newContact);
@@ -189,7 +194,7 @@ export default function App() {
           const updatedContact: Contact = {
             ...existingContact,
             displayName: data.senderDisplayName || existingContact.displayName,
-            lastSeen: messageTimestamp,
+            lastSeen: data.timestamp,
           };
           await db.put("contacts", updatedContact);
           setContacts((prev) =>
@@ -205,7 +210,7 @@ export default function App() {
 
         setLastMessageTimes((prev) => ({
           ...prev,
-          [data.senderId]: messageTimestamp,
+          [data.senderId]: data.timestamp,
         }));
 
         // If the sender is active open chat, display it immediately
@@ -218,7 +223,7 @@ export default function App() {
                 id: newMessageId,
                 sender: "peer" as const,
                 text: plaintext,
-                timestamp: messageTimestamp,
+                timestamp: data.timestamp,
                 rawPacket: data.packet,
               },
             ];
@@ -243,10 +248,21 @@ export default function App() {
     if (!peer || !identity) return;
 
     try {
-      const packet = await encryptMessage(peer.publicKey, plainText);
+      const timestamp = Date.now();
+
+      const metadata: PacketMetadata = {
+        senderId: identity.userId,
+        recipientId: peer.userId,
+        timestamp
+      }
+      const packet = await encryptMessage(
+        peer.publicKey, 
+        plainText,
+        metadata
+      );
 
       const messageId = crypto.randomUUID();
-      const timestamp = Date.now();
+      
 
       socket.emit(
         "send_packet",
@@ -254,10 +270,11 @@ export default function App() {
           recipientId: peer.userId,
           senderDisplayName: identity.displayName,
           packet,
+          timestamp,
         },
         (res) => {
           if (!res.success) {
-            console.warn("[App] Relay response warning:", res.error);
+            console.warn("[App] Failed to send packet:", res.error);
           }
         },
       );

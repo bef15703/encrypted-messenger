@@ -1,4 +1,4 @@
-import { type EncryptedPacket } from "./crypto.js";
+import { type EncryptedPacket } from "./crypto";
 
 export interface ChatMessage {
     id: string;
@@ -20,6 +20,7 @@ export interface ServerToClientEvents {
     senderId: string;
     senderDisplayName: string;
     packet: EncryptedPacket;
+    timestamp: number;
   }) => void;
 
   user_status_changed: (payload: {
@@ -61,6 +62,7 @@ export interface ClientToServerEvents {
       recipientId: string;
       senderDisplayName: string;
       packet: EncryptedPacket;
+      timestamp: number;
     },
     callback: (res: { success: boolean; error?: string }) => void
   ) => void;

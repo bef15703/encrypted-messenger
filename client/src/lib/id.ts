@@ -4,7 +4,7 @@ export function generateUserId(): string {
     const length = 12;
     const randomBytes = new Uint8Array(length);
 
-    window.crypto.getRandomValues(randomBytes);
+    globalThis.crypto.getRandomValues(randomBytes);
 
     let result = '';
     for (let i = 0; i < length; i++) {

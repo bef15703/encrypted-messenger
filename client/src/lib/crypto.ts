@@ -2,6 +2,7 @@ export interface EncryptedPacket {
     ciphertext: number[];
     iv: number[]; //initialization vector
     ephemeralPublicKey: JsonWebKey;
+    signature?: number[];
 }
 
 export interface ExportedKeyPair {
@@ -12,7 +13,7 @@ export interface ExportedKeyPair {
 export interface PacketMetadata {
     senderId: string;
     recipientId: string;
-    timestamp: number
+    timestamp: number;
 }
 
 // Serializes metadata into a deterministic UTF-8 byte sequence, enforcing canonical ordering: senderId:recipientId:timestamp
@@ -129,7 +130,7 @@ export function serializeSignableBites(
     iv: number[],
     ciphertext: number[],
     metadata: PacketMetadata
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
     const canonicalJwkString = JSON.stringify({
         crv: ephemeralPublicKey.crv,
         kty: ephemeralPublicKey.kty,
@@ -145,7 +146,7 @@ export function serializeSignableBites(
     const totalLength = jwkBytes.length + ivBytes.length + ciphertextBytes.length + aadBytes.length;
     const composite = new Uint8Array(totalLength)
     let offset = 0
-    
+
     composite.set(jwkBytes, offset);
     offset += jwkBytes.length;
 
@@ -158,6 +159,55 @@ export function serializeSignableBites(
     composite.set(aadBytes, offset);
 
     return composite
+}
+
+export async function signPacket(
+    signingPrivateKey: CryptoKey,
+    ephemeralPublicKey: JsonWebKey,
+    iv: number[],
+    ciphertext: number[],
+    metadata: PacketMetadata
+): Promise<number[]> {
+    const dataToSign = serializeSignableBites(ephemeralPublicKey, iv, ciphertext, metadata);
+
+    const signatureBuffer = await globalThis.crypto.subtle.sign(
+        {
+            name: 'ECDSA',
+            hash: { name: 'SHA-256' }
+        }, // algorithm
+        signingPrivateKey, // key
+        dataToSign // data
+    );
+
+    return Array.from(new Uint8Array(signatureBuffer));
+}
+
+// Verifies signature of incoming packet against sender's public ECDSA key
+export async function verifyPacket(
+    senderPublicSigningKey: CryptoKey,
+    packet: EncryptedPacket,
+    metadata: PacketMetadata
+): Promise<boolean> {
+    if (!packet.signature || packet.signature.length === 0) {
+        return false
+    }
+
+    const dataToVerify = serializeSignableBites(
+        packet.ephemeralPublicKey,
+        packet.iv,
+        packet.ciphertext,
+        metadata
+    );
+
+    return await globalThis.crypto.subtle.verify(
+        {
+            name: 'ECDSA',
+            hash: { name: 'SHA-256' }
+        }, // algorithm
+        senderPublicSigningKey, // key
+        new Uint8Array(packet.signature) as Uint8Array<ArrayBuffer>, // signature
+        dataToVerify // data
+    )
 }
 
 

@@ -21,15 +21,49 @@ export function serializeAad(metadata: PacketMetadata): Uint8Array<ArrayBuffer> 
     return new TextEncoder().encode(canonicalString) as Uint8Array<ArrayBuffer>;
 }
 
+// Generates a long-term ECDSA key pair
+export async function generateSignatureKeyPair(): Promise<CryptoKeyPair> {
+    return await globalThis.crypto.subtle.generateKey(
+        {
+            name: 'ECDSA',
+            namedCurve: 'P-256'
+        }, // algorithm
+        true, // extractable
+        ['sign', 'verify'] // keyUsages
+    );
+}
+
+// Imports a public ECDSA verification key from JWK format
+export async function importPublicSigningKey(jwk: JsonWebKey): Promise<CryptoKey> {
+    return await globalThis.crypto.subtle.importKey(
+        'jwk', // format
+        jwk, // keyData
+        { name: 'ECDSA', namedCurve: 'P-256' }, // algorithm
+        false, // extractable
+        ['verify'] // keyUsages
+    );
+}
+
+// Imports a private ECDSA signing key from JWK format
+export async function importPrivateSigningKey(jwk: JsonWebKey): Promise<CryptoKey> {
+    return await globalThis.crypto.subtle.importKey(
+        'jwk', // format
+        jwk, // keyData
+        { name: 'ECDSA', namedCurve: 'P-256' }, // algorithm
+        false, // extractable
+        ['sign'] // keyUsages
+    )
+}
+
 // Generates a long-term ECDH key pair
 export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
     return await globalThis.crypto.subtle.generateKey(
         {
             name: 'ECDH',
             namedCurve: 'P-256' // NIST  elliptic curve
-        }, //algorithm
+        }, // algorithm
         true, // extractable
-        ['deriveBits'] //keyUsages
+        ['deriveBits'] // keyUsages
     );
 }
 

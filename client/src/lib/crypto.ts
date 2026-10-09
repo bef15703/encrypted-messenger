@@ -123,6 +123,43 @@ async function deriveAesKeyFromEcdh(
     );
 }
 
+// Deterministically concatenates ephemeral key, IV, ciphertext, and AAD into raw bytes to sign
+export function serializeSignableBites(
+    ephemeralPublicKey: JsonWebKey,
+    iv: number[],
+    ciphertext: number[],
+    metadata: PacketMetadata
+): Uint8Array {
+    const canonicalJwkString = JSON.stringify({
+        crv: ephemeralPublicKey.crv,
+        kty: ephemeralPublicKey.kty,
+        x: ephemeralPublicKey.x,
+        y: ephemeralPublicKey.y,
+    });
+
+    const jwkBytes = new TextEncoder().encode(canonicalJwkString);
+    const ivBytes = new Uint8Array(iv);
+    const ciphertextBytes = new Uint8Array(ciphertext);
+    const aadBytes = serializeAad(metadata);
+
+    const totalLength = jwkBytes.length + ivBytes.length + ciphertextBytes.length + aadBytes.length;
+    const composite = new Uint8Array(totalLength)
+    let offset = 0
+    
+    composite.set(jwkBytes, offset);
+    offset += jwkBytes.length;
+
+    composite.set(ivBytes, offset);
+    offset += ivBytes.length;
+
+    composite.set(ciphertextBytes, offset);
+    offset += ciphertextBytes.length;
+
+    composite.set(aadBytes, offset);
+
+    return composite
+}
+
 
 // Encrypts a message
 export async function encryptMessage(

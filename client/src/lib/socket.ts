@@ -17,14 +17,15 @@ export const socket: TypedSocket = io(SERVER_URL, {
 export function connectWithIdentity(identity: ActiveIdentity): Promise<boolean> {
     return new Promise((resolve) => {
         const register = () => {
-            console.log(`[Socket] Conencted. Registering identity: ${identity.userId}`);
+            console.log(`[Socket] Connected. Registering identity: ${identity.userId}`);
 
             socket.emit(
                 'register_identity',
                 {
                     userId: identity.userId,
                     displayName: identity.displayName,
-                    publicKey: identity.publicKey
+                    publicKey: identity.publicKey,
+                    signingPublicKey: identity.signingPublicKey,
                 },
                 (response) => {
                     if (response.success) {

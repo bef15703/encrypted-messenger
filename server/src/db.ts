@@ -59,8 +59,8 @@ export async function initDb(): Promise<void> {
 export async function upsertUser(user: StoredUser): Promise<void> {
     await pool.query(
         `
-            INSERT INTO users (user_id, display_name, public_key, last_seen)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO users (user_id, display_name, public_key, signing_public_key, last_seen)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (user_id)
             DO UPDATE SET
                 display_name = EXCLUDED.display_name,

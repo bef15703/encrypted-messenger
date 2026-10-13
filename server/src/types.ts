@@ -79,6 +79,7 @@ export interface StoredUser {
     userId: string;
     displayName: string;
     publicKey: JsonWebKey;
+    signingPublicKey?: JsonWebKey;
     lastSeen: number;
 }
 

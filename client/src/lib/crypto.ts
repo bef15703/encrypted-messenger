@@ -2,6 +2,7 @@ export interface EncryptedPacket {
     ciphertext: number[];
     iv: number[]; //initialization vector
     ephemeralPublicKey: JsonWebKey;
+    signature?: number[];
 }
 
 export interface ExportedKeyPair {
@@ -12,7 +13,7 @@ export interface ExportedKeyPair {
 export interface PacketMetadata {
     senderId: string;
     recipientId: string;
-    timestamp: number
+    timestamp: number;
 }
 
 // Serializes metadata into a deterministic UTF-8 byte sequence, enforcing canonical ordering: senderId:recipientId:timestamp
@@ -21,15 +22,49 @@ export function serializeAad(metadata: PacketMetadata): Uint8Array<ArrayBuffer> 
     return new TextEncoder().encode(canonicalString) as Uint8Array<ArrayBuffer>;
 }
 
+// Generates a long-term ECDSA key pair
+export async function generateSignatureKeyPair(): Promise<CryptoKeyPair> {
+    return await globalThis.crypto.subtle.generateKey(
+        {
+            name: 'ECDSA',
+            namedCurve: 'P-256'
+        }, // algorithm
+        true, // extractable
+        ['sign', 'verify'] // keyUsages
+    );
+}
+
+// Imports a public ECDSA verification key from JWK format
+export async function importPublicSigningKey(jwk: JsonWebKey): Promise<CryptoKey> {
+    return await globalThis.crypto.subtle.importKey(
+        'jwk', // format
+        jwk, // keyData
+        { name: 'ECDSA', namedCurve: 'P-256' }, // algorithm
+        false, // extractable
+        ['verify'] // keyUsages
+    );
+}
+
+// Imports a private ECDSA signing key from JWK format
+export async function importPrivateSigningKey(jwk: JsonWebKey): Promise<CryptoKey> {
+    return await globalThis.crypto.subtle.importKey(
+        'jwk', // format
+        jwk, // keyData
+        { name: 'ECDSA', namedCurve: 'P-256' }, // algorithm
+        false, // extractable
+        ['sign'] // keyUsages
+    )
+}
+
 // Generates a long-term ECDH key pair
 export async function generateIdentityKeyPair(): Promise<CryptoKeyPair> {
     return await globalThis.crypto.subtle.generateKey(
         {
             name: 'ECDH',
             namedCurve: 'P-256' // NIST  elliptic curve
-        }, //algorithm
+        }, // algorithm
         true, // extractable
-        ['deriveBits'] //keyUsages
+        ['deriveBits'] // keyUsages
     );
 }
 
@@ -87,6 +122,92 @@ async function deriveAesKeyFromEcdh(
         false, // extractable
         [usage] //keyUsages
     );
+}
+
+// Deterministically concatenates ephemeral key, IV, ciphertext, and AAD into raw bytes to sign
+export function serializeSignableBites(
+    ephemeralPublicKey: JsonWebKey,
+    iv: number[],
+    ciphertext: number[],
+    metadata: PacketMetadata
+): Uint8Array<ArrayBuffer> {
+    const canonicalJwkString = JSON.stringify({
+        crv: ephemeralPublicKey.crv,
+        kty: ephemeralPublicKey.kty,
+        x: ephemeralPublicKey.x,
+        y: ephemeralPublicKey.y,
+    });
+
+    const jwkBytes = new TextEncoder().encode(canonicalJwkString);
+    const ivBytes = new Uint8Array(iv);
+    const ciphertextBytes = new Uint8Array(ciphertext);
+    const aadBytes = serializeAad(metadata);
+
+    const totalLength = jwkBytes.length + ivBytes.length + ciphertextBytes.length + aadBytes.length;
+    const composite = new Uint8Array(totalLength)
+    let offset = 0
+
+    composite.set(jwkBytes, offset);
+    offset += jwkBytes.length;
+
+    composite.set(ivBytes, offset);
+    offset += ivBytes.length;
+
+    composite.set(ciphertextBytes, offset);
+    offset += ciphertextBytes.length;
+
+    composite.set(aadBytes, offset);
+
+    return composite
+}
+
+export async function signPacket(
+    signingPrivateKey: CryptoKey,
+    ephemeralPublicKey: JsonWebKey,
+    iv: number[],
+    ciphertext: number[],
+    metadata: PacketMetadata
+): Promise<number[]> {
+    const dataToSign = serializeSignableBites(ephemeralPublicKey, iv, ciphertext, metadata);
+
+    const signatureBuffer = await globalThis.crypto.subtle.sign(
+        {
+            name: 'ECDSA',
+            hash: { name: 'SHA-256' }
+        }, // algorithm
+        signingPrivateKey, // key
+        dataToSign // data
+    );
+
+    return Array.from(new Uint8Array(signatureBuffer));
+}
+
+// Verifies signature of incoming packet against sender's public ECDSA key
+export async function verifyPacket(
+    senderPublicSigningKey: CryptoKey,
+    packet: EncryptedPacket,
+    metadata: PacketMetadata
+): Promise<boolean> {
+    if (!packet.signature || packet.signature.length === 0) {
+        return false
+    }
+
+    const dataToVerify = serializeSignableBites(
+        packet.ephemeralPublicKey,
+        packet.iv,
+        packet.ciphertext,
+        metadata
+    );
+
+    return await globalThis.crypto.subtle.verify(
+        {
+            name: 'ECDSA',
+            hash: { name: 'SHA-256' }
+        }, // algorithm
+        senderPublicSigningKey, // key
+        new Uint8Array(packet.signature) as Uint8Array<ArrayBuffer>, // signature
+        dataToVerify // data
+    )
 }
 
 

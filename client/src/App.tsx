@@ -2,8 +2,11 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import {
   encryptMessage,
   decryptMessage,
+  signPacket,
+  verifyPacket,
   type EncryptedPacket,
-  type PacketMetadata
+  type PacketMetadata,
+  importPublicSigningKey
 } from "./lib/crypto";
 import { type ChatMessage, type PeerProfile } from "./lib/types";
 import { getDb, type LocalMessage, type Contact } from "./lib/db";
@@ -44,6 +47,7 @@ export default function App() {
       userId: contact.userId,
       name: contact.displayName,
       publicKey: contact.publicKey,
+      signingPublicKey: contact.signingPublicKey,
       online: true,
     });
   };
@@ -150,6 +154,49 @@ export default function App() {
           recipientId: identity.userId,
           timestamp: data.timestamp
         }
+
+        const db = await getDb();
+        let existingContact = await db.get("contacts", data.senderId);
+
+        // Fetches public keys from relay if not cached locally or missing signing key
+        if (!existingContact?.signingPublicKey) {
+          const lookupRes = await new Promise<{
+            success: boolean;
+            publicKey?: JsonWebKey;
+            signingPublicKey?: JsonWebKey;
+            displayName?: string;
+          }>((resolve) => {
+            socket.emit("lookup_user", data.senderId, resolve);
+          });
+
+          if (!lookupRes.success || !lookupRes.publicKey || !lookupRes.signingPublicKey) {
+            console.error(`[Security] Dropping packet: Sender ${data.senderId} public keys could not be resolved.`);
+            return;
+          }
+
+          existingContact = {
+            userId: data.senderId,
+            displayName: data.senderDisplayName || lookupRes.displayName || "Unknown",
+            publicKey: lookupRes.publicKey,
+            signingPublicKey: lookupRes.signingPublicKey,
+            lastSeen: data.timestamp,
+          };
+          await db.put("contacts", existingContact);
+          setContacts((prev) => [
+            ...prev.filter((c) => c.userId !== data.senderId),
+            existingContact!,
+          ]);
+        }
+
+        // Rejects packet if signature is invalid
+        const senderSigningKey = await importPublicSigningKey(existingContact.signingPublicKey);
+        const isSignatureValid = await verifyPacket(senderSigningKey, data.packet, metadata);
+
+        if (!isSignatureValid) {
+          console.error(`[Security Alert] Rejected forged or tampered packet from sender ${data.senderId}.`);
+          return;
+        }
+
         // Decrypts using local private key
         const plaintext = await decryptMessage(
           data.packet,
@@ -160,7 +207,6 @@ export default function App() {
         const newMessageId = crypto.randomUUID();
 
         // Saves decrypted record to IndexedDB
-        const db = await getDb();
         const localRecord: LocalMessage = {
           id: newMessageId,
           conversationId: data.senderId,
@@ -171,42 +217,23 @@ export default function App() {
         };
         await db.put("messages", localRecord);
 
-        let existingContact = await db.get("contacts", data.senderId);
-
-        if (!existingContact || !existingContact.publicKey) {
-          socket.emit("lookup_user", data.senderId, async (res) => {
-            if (res.success && res.publicKey) {
-              const newContact: Contact = {
-                userId: data.senderId,
-                displayName: data.senderDisplayName || res.displayName || "Unknown",
-                publicKey: res.publicKey,
-                lastSeen: data.timestamp,
-              };
-              const innerDb = await getDb();
-              await innerDb.put("contacts", newContact);
-              setContacts((prev) => [
-                ...prev.filter((c) => c.userId !== data.senderId),
-                newContact,
-              ]);
-            }
-          });
-        } else {
-          const updatedContact: Contact = {
+        // Updates contact metadata
+        const updatedContact: Contact = {
             ...existingContact,
             displayName: data.senderDisplayName || existingContact.displayName,
             lastSeen: data.timestamp,
-          };
-          await db.put("contacts", updatedContact);
-          setContacts((prev) =>
-            prev.map((c) => (c.userId === data.senderId ? updatedContact : c))
-          );
+        };
 
-          setPeer((prev) =>
-            prev && prev.userId === data.senderId
-              ? { ...prev, name: updatedContact.displayName }
-              : prev,
-          );
-        }
+        await db.put("contacts", updatedContact);
+        setContacts((prev) =>
+          prev.map((c) => (c.userId === data.senderId ? updatedContact : c))
+        );
+
+        setPeer((prev) =>
+          prev && prev.userId === data.senderId
+            ? { ...prev, name: updatedContact.displayName }
+            : prev,
+        );
 
         setLastMessageTimes((prev) => ({
           ...prev,
@@ -255,11 +282,24 @@ export default function App() {
         recipientId: peer.userId,
         timestamp
       }
-      const packet = await encryptMessage(
+      const unsignedPacket = await encryptMessage(
         peer.publicKey, 
         plainText,
         metadata
       );
+
+      const signature = await signPacket(
+        identity.signingPrivateKey,
+        unsignedPacket.ephemeralPublicKey,
+        unsignedPacket.iv,
+        unsignedPacket.ciphertext,
+        metadata
+      );
+
+      const packet: EncryptedPacket = {
+        ...unsignedPacket,
+        signature,
+      };
 
       const messageId = crypto.randomUUID();
       
@@ -316,6 +356,7 @@ export default function App() {
       userId: connectedPeer.userId,
       displayName: connectedPeer.name,
       publicKey: connectedPeer.publicKey,
+      signingPublicKey: connectedPeer.signingPublicKey!,
       lastSeen: Date.now(),
     };
     await db.put("contacts", contactRecord);

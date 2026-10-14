@@ -45,7 +45,7 @@ export function KeyExchangeModal({
     socket.emit("lookup_user", formattedId, async (res) => {
       setIsSubmitting(false);
 
-      if (!res.success || !res.publicKey) {
+      if (!res.success || !res.publicKey || !res.signingPublicKey) {
         setError(res.error || "Peer not found");
         return;
       }
@@ -54,6 +54,7 @@ export function KeyExchangeModal({
         userId: formattedId,
         name: res.displayName || "Peer",
         publicKey: res.publicKey,
+        signingPublicKey: res.signingPublicKey,
         online: true,
       };
 
@@ -63,6 +64,7 @@ export function KeyExchangeModal({
           userId: peerProfile.userId,
           displayName: peerProfile.name,
           publicKey: peerProfile.publicKey,
+          signingPublicKey: res.signingPublicKey,
           lastSeen: Date.now(),
         };
         await db.put("contacts", contactRecord);

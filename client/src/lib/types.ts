@@ -12,6 +12,7 @@ export interface PeerProfile {
   userId: string;
   name: string;
   publicKey: JsonWebKey;
+  signingPublicKey?: JsonWebKey;
   online?: boolean;
 }
 
@@ -35,6 +36,7 @@ export interface ClientToServerEvents {
       userId: string;
       displayName: string;
       publicKey: JsonWebKey;
+      signingPublicKey: JsonWebKey;
     },
     callback: (res: { success: boolean; error?: string }) => void
   ) => void;
@@ -52,6 +54,7 @@ export interface ClientToServerEvents {
     callback: (res: {
       success: boolean;
       publicKey?: JsonWebKey;
+      signingPublicKey?: JsonWebKey;
       displayName?: string;
       error?: string;
     }) => void

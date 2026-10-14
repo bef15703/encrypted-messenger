@@ -2,15 +2,21 @@ import { getDb, type StoredIdentity } from './db'
 import { generateUserId } from './id'
 import {
     generateIdentityKeyPair,
+    generateSignatureKeyPair,
     exportKeyPair,
-    importPrivateKey
-} from './crypto'
+    importPrivateKey,
+    importPrivateSigningKey,
+} from './crypto';
 
 export interface ActiveIdentity {
     userId: string;
     displayName: string;
+    // ECDH Key Exchange
     publicKey: JsonWebKey;
-    privateKey: CryptoKey
+    privateKey: CryptoKey;
+    // ECDSA Digital Signatures
+    signingPublicKey: JsonWebKey;
+    signingPrivateKey: CryptoKey;
 }
 
 export async function loadStoredIdentity(): Promise<ActiveIdentity | null> {
@@ -21,13 +27,28 @@ export async function loadStoredIdentity(): Promise<ActiveIdentity | null> {
         return null;
     }
 
-    const privateKey = await importPrivateKey(record.keyPair.privateKey);
+    // Generate signing keys for older identities
+    if(!record.signingKeyPair) {
+        const signingPair = await generateSignatureKeyPair();
+        const exportedSigning = await exportKeyPair(signingPair);
+
+        record.signingKeyPair = exportedSigning
+
+        await db.put("identity", record, "current_user");
+    }
+
+    const [privateKey, signingPrivateKey] = await Promise.all([
+        importPrivateKey(record.keyPair.privateKey),
+        importPrivateSigningKey(record.signingKeyPair.privateKey)
+    ]);
 
     return {
         userId: record.userId,
         displayName: record.displayName,
         publicKey: record.keyPair.publicKey,
-        privateKey
+        privateKey,
+        signingPublicKey: record.signingKeyPair.publicKey,
+        signingPrivateKey: signingPrivateKey
     };
 }
 
@@ -35,14 +56,21 @@ export async function createNewIdentity(displayName: string): Promise<ActiveIden
     const cleanName = displayName.trim() || 'Anonymous';
     const userId = generateUserId();
 
-    const keyPair = await generateIdentityKeyPair();
+    const [exchangePair, signingPair] = await Promise.all([
+        generateIdentityKeyPair(),
+        generateSignatureKeyPair(),
+    ]);
 
-    const exported = await exportKeyPair(keyPair);
+    const [exportedExchange, exportedSigning] = await Promise.all([
+        exportKeyPair(exchangePair),
+        exportKeyPair(signingPair),
+    ]);
 
     const record: StoredIdentity = {
         userId,
         displayName: cleanName,
-        keyPair: exported
+        keyPair: exportedExchange,
+        signingKeyPair: exportedSigning
     };
 
     const db = await getDb();
@@ -51,8 +79,10 @@ export async function createNewIdentity(displayName: string): Promise<ActiveIden
     return {
         userId,
         displayName: cleanName,
-        publicKey: exported.publicKey,
-        privateKey: keyPair.privateKey
+        publicKey: exportedExchange.publicKey,
+        privateKey: exchangePair.privateKey,
+        signingPublicKey: exportedSigning.publicKey,
+        signingPrivateKey: signingPair.privateKey,
     };
 }
 

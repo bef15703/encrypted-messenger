@@ -50,14 +50,14 @@ io.on("connection", (socket) => {
 
   socket.on(
     "register_identity",
-    async ({ userId, displayName, publicKey }, callback) => {
+    async ({ userId, displayName, publicKey, signingPublicKey }, callback) => {
       const cleanId = userId.trim().toUpperCase();
       const cleanName = displayName.trim();
 
-      if (!cleanId || !cleanName || !publicKey) {
+      if (!cleanId || !cleanName || !publicKey || !signingPublicKey) {
         return callback({
           success: false,
-          error: `userId, displayName, and publicKey are all required.`,
+          error: `userId, displayName, publicKey, and signingPublicKey are all required.`,
         });
       }
 
@@ -74,6 +74,7 @@ io.on("connection", (socket) => {
         displayName: cleanName,
         socketId: socket.id,
         publicKey,
+        signingPublicKey,
       };
 
       sessionsByUserId.set(cleanId, session);
@@ -84,6 +85,7 @@ io.on("connection", (socket) => {
           userId: cleanId,
           displayName: cleanName,
           publicKey,
+          signingPublicKey,
           lastSeen: Date.now(),
         });
 
@@ -188,6 +190,7 @@ io.on("connection", (socket) => {
       callback({
         success: true,
         publicKey: storedProfile.publicKey,
+        signingPublicKey: storedProfile.signingPublicKey,
         displayName: storedProfile.displayName,
       });
     } catch (err) {

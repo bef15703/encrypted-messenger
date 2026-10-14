@@ -19,12 +19,18 @@ export interface UserSession {
     userId: string;
     displayName: string;
     socketId: string;
-    publicKey: JsonWebKey
+    publicKey: JsonWebKey;
+    signingPublicKey: JsonWebKey;
 }
 
 export interface ClientToServerEvents {
     register_identity: (
-        data: {userId: string; displayName: String; publicKey: JsonWebKey},
+        data: {
+            userId: string; 
+            displayName: String; 
+            publicKey: JsonWebKey, 
+            signingPublicKey: JsonWebKey,
+        },
         callback: (response: {success: boolean; error?: string}) => void
     ) => void;
 
@@ -41,6 +47,7 @@ export interface ClientToServerEvents {
         callback: (response: {
             success: boolean;
             publicKey?: JsonWebKey;
+            signingPublicKey?: JsonWebKey;
             displayName?: string;
             error?: string;
         }) => void
@@ -72,6 +79,7 @@ export interface StoredUser {
     userId: string;
     displayName: string;
     publicKey: JsonWebKey;
+    signingPublicKey?: JsonWebKey;
     lastSeen: number;
 }
 

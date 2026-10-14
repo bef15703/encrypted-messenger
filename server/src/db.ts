@@ -7,7 +7,7 @@ dotenv.config();
 const { Pool } = pg
 
 export const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/blind_messenger',
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/encrypted-messenger',
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
@@ -38,6 +38,18 @@ export async function initDb(): Promise<void> {
             ON pending_packets (recipient_id);
         `);
 
+        await pool.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name='users' AND column_name='signing_public_key'
+            ) THEN
+              ALTER TABLE users ADD COLUMN signing_public_key JSONB;
+            END IF;
+          END $$;
+        `);
+
         console.log(`[Database] PostgreSQL tables and indexes verified.`);
     } finally {
         client.release()
@@ -47,21 +59,27 @@ export async function initDb(): Promise<void> {
 export async function upsertUser(user: StoredUser): Promise<void> {
     await pool.query(
         `
-            INSERT INTO users (user_id, display_name, public_key, last_seen)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO users (user_id, display_name, public_key, signing_public_key, last_seen)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (user_id)
             DO UPDATE SET
                 display_name = EXCLUDED.display_name,
                 public_key = EXCLUDED.public_key,
+                signing_public_key = EXCLUDED.signing_public_key,
                 last_seen = EXCLUDED.last_seen;
         `,
-        [user.userId, user.displayName, JSON.stringify(user.publicKey), user.lastSeen]
+        [
+          user.userId, 
+          user.displayName, 
+          JSON.stringify(user.publicKey),
+          user.signingPublicKey ? JSON.stringify(user.signingPublicKey) : null,
+          user.lastSeen],
     );
 }
 
 export async function getUser(userId: string): Promise<StoredUser | null> {
     const res = await pool.query(
-        `SELECT user_id, display_name, public_key, last_seen FROM users WHERE user_id = $1;`,
+        `SELECT user_id, display_name, public_key, signing_public_key, last_seen FROM users WHERE user_id = $1;`,
         [userId]
     );
 
@@ -72,6 +90,7 @@ export async function getUser(userId: string): Promise<StoredUser | null> {
         userId: row.user_id,
         displayName: row.display_name,
         publicKey: typeof row.public_key === 'string' ? JSON.parse(row.public_key) : row.public_key,
+        signingPublicKey: row.signing_public_key ?(typeof row.signing_public_key === "string" ? JSON.parse(row.signing_public_key) : row.signing_public_key) : undefined,
         lastSeen: Number(row.last_seen),
     };
 }

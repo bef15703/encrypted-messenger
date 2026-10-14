@@ -13,6 +13,7 @@ export interface Contact {
     userId: string;
     displayName: string;
     publicKey: JsonWebKey;
+    signingPublicKey: JsonWebKey;
     lastSeen?: number;
 }
 
@@ -23,6 +24,10 @@ export interface StoredIdentity {
         publicKey: JsonWebKey;
         privateKey: JsonWebKey;
     };
+    signingKeyPair: {
+        publicKey: JsonWebKey;
+        privateKey: JsonWebKey;
+    }
 }
 
 interface MessengerDB extends DBSchema {
